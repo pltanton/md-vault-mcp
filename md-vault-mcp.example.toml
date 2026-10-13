@@ -1,0 +1,21 @@
+vault = "/home/me/Obsidian/Vault"
+state_dir = "/home/me/.local/state/md-vault-mcp"
+edit_window = "48h"
+max_file_size = 1048576
+extensions = [".md"]
+
+# stdio (default) or http
+transport = "stdio"
+
+[read]
+mode = "allowlist"
+allow = ["00. Inbox/**", "02. Areas/Personal/**", "*.md"]
+deny = ["**/Work/**"]
+
+[write]
+mode = "allowlist"
+allow = ["00. Inbox/**", "02. Areas/Personal/**"]
+
+[http]
+listen = "127.0.0.1:8093"
+token_file = "/run/secrets/md-vault-mcp-token"
