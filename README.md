@@ -1,5 +1,12 @@
 # md-vault-mcp
 
+> [!WARNING]
+> **AI slop.** This project was written almost entirely by an AI agent and has
+> not been properly reviewed by a human. It works for the author's setup, but
+> expect bugs, rough edges and security mistakes. Read the code before you
+> point it at notes you care about, and don't rely on it as a security boundary
+> without your own audit.
+
 An [MCP](https://modelcontextprotocol.io) server that lets an AI agent work
 with a folder of Markdown notes (an Obsidian vault, for example) without
 handing it the whole folder.
@@ -22,16 +29,16 @@ vault.
 
 ## Tools
 
-| Tool | What it does |
-| --- | --- |
-| `note_read(path, offset?, limit?)` | Note content with line numbers. |
-| `note_search(query, under?, limit?)` | Case-insensitive substring search over text and file names; path, line and the matching line. |
-| `note_list(dir?)` | Readable notes and the subdirectories that contain some. |
-| `note_add(path, text, heading?)` | Append lines to an existing note: at the end of the section under `heading` (the heading line as written, e.g. `## Gift ideas`, or just its text), or at the end of the note. Returns a block `id`. |
-| `note_create(path, text)` | Create a note; fails if it exists. The whole note is one block. |
-| `note_edit(id, text)` | Replace a block the agent wrote. |
-| `note_remove(id)` | Remove a block the agent wrote. A created note whose only block is removed is deleted. |
-| `note_recent(limit?)` | Blocks the agent can still change, newest first, with their current text — for "rewrite what you just added". |
+| Tool                                 | What it does                                                                                                                                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `note_read(path, offset?, limit?)`   | Note content with line numbers.                                                                                                                                                                     |
+| `note_search(query, under?, limit?)` | Case-insensitive substring search over text and file names; path, line and the matching line.                                                                                                       |
+| `note_list(dir?)`                    | Readable notes and the subdirectories that contain some.                                                                                                                                            |
+| `note_add(path, text, heading?)`     | Append lines to an existing note: at the end of the section under `heading` (the heading line as written, e.g. `## Gift ideas`, or just its text), or at the end of the note. Returns a block `id`. |
+| `note_create(path, text)`            | Create a note; fails if it exists. The whole note is one block.                                                                                                                                     |
+| `note_edit(id, text)`                | Replace a block the agent wrote.                                                                                                                                                                    |
+| `note_remove(id)`                    | Remove a block the agent wrote. A created note whose only block is removed is deleted.                                                                                                              |
+| `note_recent(limit?)`                | Blocks the agent can still change, newest first, with their current text — for "rewrite what you just added".                                                                                       |
 
 A section ends before the next heading of the same or a higher level, so it
 includes its subsections. New lines go right after the last non-blank line of
@@ -91,16 +98,16 @@ allow = ["00. Inbox/**"]
 
 See [`md-vault-mcp.example.toml`](md-vault-mcp.example.toml).
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `vault` | — | Vault directory. |
-| `state_dir` | — | Where the journal and its key live. |
-| `edit_window` | `48h` | Go duration. |
-| `max_file_size` | `1048576` | Bytes; larger notes are neither read nor written. |
-| `extensions` | `[".md"]` | |
-| `transport` | `stdio` | `stdio` or `http`. |
-| `http.listen` | — | e.g. `127.0.0.1:8093`. |
-| `http.token_file` | — | File with the bearer token, at least 16 characters. |
+| Key               | Default   | Meaning                                             |
+| ----------------- | --------- | --------------------------------------------------- |
+| `vault`           | —         | Vault directory.                                    |
+| `state_dir`       | —         | Where the journal and its key live.                 |
+| `edit_window`     | `48h`     | Go duration.                                        |
+| `max_file_size`   | `1048576` | Bytes; larger notes are neither read nor written.   |
+| `extensions`      | `[".md"]` |                                                     |
+| `transport`       | `stdio`   | `stdio` or `http`.                                  |
+| `http.listen`     | —         | e.g. `127.0.0.1:8093`.                              |
+| `http.token_file` | —         | File with the bearer token, at least 16 characters. |
 
 Flags `-transport`, `-listen` and `-token-file` override the config.
 
