@@ -425,7 +425,7 @@ type BaseColumn struct {
 
 type BaseRow struct {
 	Path   string         `json:"path"`
-	Group  any            `json:"group,omitempty"`
+	Group  any            `json:"group,omitempty" jsonschema:"value of the view's groupBy property"`
 	Values map[string]any `json:"values"`
 }
 

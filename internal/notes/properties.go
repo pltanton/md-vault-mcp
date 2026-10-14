@@ -247,7 +247,7 @@ type PropertyChange struct {
 	Path      string    `json:"path"`
 	Name      string    `json:"name"`
 	Previous  any       `json:"previous" jsonschema:"value before the change; null when the property was not there"`
-	Value     any       `json:"value,omitempty"`
+	Value     any       `json:"value,omitempty" jsonschema:"value now set; absent after note_unset_property"`
 	ExpiresAt time.Time `json:"undoable_until"`
 }
 

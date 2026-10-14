@@ -2,6 +2,7 @@ package notes
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -446,6 +447,21 @@ func TestHTTPNeedsToken(t *testing.T) {
 	}
 	if len(tools.Tools) != 12 {
 		t.Errorf("%d tools", len(tools.Tools))
+	}
+	// The Python MCP SDK 2.x rejects a bare `true` as a property schema.
+	for _, tool := range tools.Tools {
+		for kind, schema := range map[string]any{"input": tool.InputSchema, "output": tool.OutputSchema} {
+			data, _ := json.Marshal(schema)
+			var top struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			}
+			json.Unmarshal(data, &top)
+			for name, sub := range top.Properties {
+				if sub[0] != '{' {
+					t.Errorf("%s %s schema: property %s is %s, not an object", tool.Name, kind, name, sub)
+				}
+			}
+		}
 	}
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "note_read", Arguments: map[string]any{"path": "Tasks.md"}})
 	if err != nil || res.IsError {
