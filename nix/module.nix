@@ -31,123 +31,112 @@
     // lib.optionalAttrs (r.allow != []) {inherit (r) allow;}
     // lib.optionalAttrs (r.deny != []) {inherit (r) deny;};
 
-  stateDir = "/var/lib/md-vault-mcp";
-
-  configFile = toml.generate "md-vault-mcp.toml" ({
-      vault = cfg.vault;
-      state_dir = stateDir;
-      edit_window = cfg.editWindow;
-      max_file_size = cfg.maxFileSize;
-      extensions = cfg.extensions;
-      read = ruleSettings cfg.read;
-      write = ruleSettings cfg.write;
-      transport = "http";
-      http = {
-        listen = cfg.listen;
-        token_file = "/run/credentials/md-vault-mcp.service/token";
+  instanceType = lib.types.submodule ({name, ...}: {
+    options = {
+      user = lib.mkOption {
+        type = lib.types.str;
+        default = "md-vault-mcp";
+        description = "User the server runs as. Use the vault's owner so written files keep their ownership.";
       };
-    }
-    // cfg.extraSettings);
-in {
-  options.services.md-vault-mcp = {
-    enable = lib.mkEnableOption "md-vault-mcp, scoped MCP access to a Markdown vault over HTTP";
 
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.callPackage ./package.nix {};
-      defaultText = lib.literalExpression "pkgs.callPackage ./nix/package.nix {}";
-    };
+      group = lib.mkOption {
+        type = lib.types.str;
+        default = "md-vault-mcp";
+      };
 
-    user = lib.mkOption {
-      type = lib.types.str;
-      default = "md-vault-mcp";
-      description = "User the server runs as. Use the vault's owner so written files keep their ownership.";
-    };
+      vault = lib.mkOption {
+        type = lib.types.str;
+        description = "Absolute path of the vault directory.";
+      };
 
-    group = lib.mkOption {
-      type = lib.types.str;
-      default = "md-vault-mcp";
-    };
+      listen = lib.mkOption {
+        type = lib.types.str;
+        example = "127.0.0.1:8093";
+      };
 
-    vault = lib.mkOption {
-      type = lib.types.str;
-      description = "Absolute path of the vault directory.";
-    };
+      tokenFile = lib.mkOption {
+        type = lib.types.str;
+        description = ''
+          Runtime path of a file holding the bearer token (at least 16
+          characters). Passed via systemd LoadCredential, so it may be readable
+          by root only. Not a Nix path: that would copy the secret into the store.
+        '';
+      };
 
-    listen = lib.mkOption {
-      type = lib.types.str;
-      default = "127.0.0.1:8093";
-    };
+      stateDirectory = lib.mkOption {
+        type = lib.types.str;
+        default = "md-vault-mcp-${name}";
+        description = "Directory under /var/lib for the journal of the agent's own edits.";
+      };
 
-    tokenFile = lib.mkOption {
-      type = lib.types.str;
-      description = ''
-        Runtime path of a file holding the bearer token (at least 16
-        characters). Passed via systemd LoadCredential, so it may be readable
-        by root only. Not a Nix path: that would copy the secret into the store.
-      '';
-    };
+      editWindow = lib.mkOption {
+        type = lib.types.str;
+        default = "48h";
+        description = "How long after writing a block the agent may still change or remove it.";
+      };
 
-    editWindow = lib.mkOption {
-      type = lib.types.str;
-      default = "48h";
-      description = "How long after writing a block the agent may still change or remove it.";
-    };
+      maxFileSize = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 1048576;
+      };
 
-    maxFileSize = lib.mkOption {
-      type = lib.types.ints.positive;
-      default = 1048576;
-    };
+      extensions = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [".md"];
+      };
 
-    extensions = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [".md"];
-    };
+      read = lib.mkOption {
+        type = ruleSetType;
+        default = {};
+      };
 
-    read = lib.mkOption {
-      type = ruleSetType;
-      default = {};
-    };
+      write = lib.mkOption {
+        type = ruleSetType;
+        default = {};
+        description = "Write rules; always intersected with the read rules.";
+      };
 
-    write = lib.mkOption {
-      type = ruleSetType;
-      default = {};
-      description = "Write rules; always intersected with the read rules.";
-    };
-
-    extraSettings = lib.mkOption {
-      type = toml.type;
-      default = {};
-    };
-  };
-
-  config = lib.mkIf cfg.enable {
-    users.users = lib.mkIf (cfg.user == "md-vault-mcp") {
-      md-vault-mcp = {
-        isSystemUser = true;
-        group = cfg.group;
+      extraSettings = lib.mkOption {
+        type = toml.type;
+        default = {};
       };
     };
-    users.groups = lib.mkIf (cfg.group == "md-vault-mcp") {md-vault-mcp = {};};
+  });
 
-    systemd.services.md-vault-mcp = {
-      description = "md-vault-mcp, scoped MCP access to a Markdown vault";
+  service = name: inst: let
+    configFile = toml.generate "md-vault-mcp-${name}.toml" ({
+        inherit (inst) vault extensions;
+        state_dir = "/var/lib/${inst.stateDirectory}";
+        edit_window = inst.editWindow;
+        max_file_size = inst.maxFileSize;
+        read = ruleSettings inst.read;
+        write = ruleSettings inst.write;
+        transport = "http";
+        http = {
+          inherit (inst) listen;
+          token_file = "/run/credentials/md-vault-mcp-${name}.service/token";
+        };
+      }
+      // inst.extraSettings);
+  in
+    lib.nameValuePair "md-vault-mcp-${name}" {
+      description = "md-vault-mcp ${name}, scoped MCP access to a Markdown vault";
       wantedBy = ["multi-user.target"];
       after = ["network.target"];
 
       serviceConfig = {
         ExecStart = "${lib.getExe cfg.package} -config ${configFile}";
-        User = cfg.user;
-        Group = cfg.group;
-        LoadCredential = ["token:${cfg.tokenFile}"];
-        StateDirectory = "md-vault-mcp";
+        User = inst.user;
+        Group = inst.group;
+        LoadCredential = ["token:${inst.tokenFile}"];
+        StateDirectory = inst.stateDirectory;
         StateDirectoryMode = "0700";
         Restart = "on-failure";
         RestartSec = "5s";
 
         ProtectSystem = "strict";
         ProtectHome = "read-only";
-        ReadWritePaths = [cfg.vault];
+        ReadWritePaths = [inst.vault];
         PrivateTmp = true;
         PrivateDevices = true;
         NoNewPrivileges = true;
@@ -169,5 +158,32 @@ in {
         UMask = "0022";
       };
     };
+
+  usesDefault = attr: lib.any (inst: inst.${attr} == "md-vault-mcp") (lib.attrValues cfg.instances);
+in {
+  options.services.md-vault-mcp = {
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.callPackage ./package.nix {};
+      defaultText = lib.literalExpression "pkgs.callPackage ./nix/package.nix {}";
+    };
+
+    instances = lib.mkOption {
+      type = lib.types.attrsOf instanceType;
+      default = {};
+      description = "One HTTP server per vault, as the systemd service md-vault-mcp-<name>.";
+    };
+  };
+
+  config = lib.mkIf (cfg.instances != {}) {
+    users.users = lib.mkIf (usesDefault "user") {
+      md-vault-mcp = {
+        isSystemUser = true;
+        group = "md-vault-mcp";
+      };
+    };
+    users.groups = lib.mkIf (usesDefault "group") {md-vault-mcp = {};};
+
+    systemd.services = lib.mapAttrs' service cfg.instances;
   };
 }

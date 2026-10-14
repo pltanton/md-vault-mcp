@@ -161,15 +161,26 @@ server as the vault's owner — for a Syncthing-synced vault, the Syncthing user
       modules = [
         md-vault-mcp.nixosModules.default
         {
-          services.md-vault-mcp = {
-            enable = true;
-            user = "syncthing";
-            group = "syncthing";
-            vault = "/var/lib/syncthing/notes";
-            tokenFile = "/run/secrets/md-vault-mcp-token";
-            read.allow = ["Inbox/**" "Personal/**" "*.md"];
-            read.deny = ["**/Work/**"];
-            write.allow = ["Inbox/**" "Personal/**"];
+          services.md-vault-mcp.instances = {
+            personal = {
+              user = "syncthing";
+              group = "syncthing";
+              vault = "/var/lib/syncthing/notes";
+              listen = "127.0.0.1:8093";
+              tokenFile = "/run/secrets/md-vault-mcp-token";
+              read.allow = ["Inbox/**" "Personal/**" "*.md"];
+              read.deny = ["**/Work/**"];
+              write.allow = ["Inbox/**" "Personal/**"];
+            };
+            family = {
+              user = "syncthing";
+              group = "syncthing";
+              vault = "/var/lib/syncthing/family";
+              listen = "127.0.0.1:8094";
+              tokenFile = "/run/secrets/md-vault-mcp-family-token";
+              read.mode = "denylist";
+              write.mode = "denylist";
+            };
           };
         }
       ];
@@ -178,9 +189,11 @@ server as the vault's owner — for a Syncthing-synced vault, the Syncthing user
 }
 ```
 
-The module runs the HTTP transport as a hardened systemd service, passes the
-token through `LoadCredential` (so the token file can be root-only) and keeps
-the journal in `/var/lib/md-vault-mcp`.
+Each instance is a hardened systemd service `md-vault-mcp-<name>` serving one
+vault over HTTP. The token goes through `LoadCredential` (so the token file can
+be root-only), and the journal lives in `/var/lib/<stateDirectory>`, by default
+`/var/lib/md-vault-mcp-<name>`. Give each instance its own token: a client
+holding one cannot reach the other vault.
 
 ## Security model
 
