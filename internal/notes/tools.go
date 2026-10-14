@@ -45,6 +45,17 @@ type idInput struct {
 	ID string `json:"id" jsonschema:"block id from note_add, note_create or note_recent"`
 }
 
+type setPropertyInput struct {
+	Path  string `json:"path" jsonschema:"note to change"`
+	Name  string `json:"name" jsonschema:"property name as in the front matter, e.g. birthday"`
+	Value any    `json:"value" jsonschema:"text, number, true/false, null or a list of those; dates as YYYY-MM-DD, links as [[Note]]"`
+}
+
+type unsetPropertyInput struct {
+	Path string `json:"path" jsonschema:"note to change"`
+	Name string `json:"name" jsonschema:"property to remove"`
+}
+
 type recentInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"at most this many blocks, up to 20"`
 }
@@ -107,16 +118,44 @@ func (s *Service) Register(server *mcp.Server) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "note_remove",
-		Description: "Remove a block you wrote, under the same conditions as note_edit.",
+		Description: "Remove a block you wrote, under the same conditions as note_edit. For a property change id it puts the previous value back.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in idInput) (*mcp.CallToolResult, WriteResult, error) {
 		out, err := s.Remove(in.ID)
 		return nil, out, err
 	})
 
 	mcp.AddTool(server, &mcp.Tool{
+		Name: "note_properties",
+		Description: "Query note properties (YAML front matter) without reading the notes: filter by folder, tag, " +
+			"set or equal properties, or by a yearly date coming up in the next days (birthdays), and get back " +
+			"only the fields you ask for. Dates, ages and sorting are computed here — do not recompute them.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in PropertyQuery) (*mcp.CallToolResult, PropertyResult, error) {
+		out, err := s.Properties(in)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "note_set_property",
+		Description: "Set one property in a note's front matter, adding the front matter if the note has none. " +
+			"Other properties and the note text stay untouched. Returns the previous value and an id; " +
+			"note_remove(id) puts the previous value back within " + window + " unless someone changed it since.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in setPropertyInput) (*mcp.CallToolResult, PropertyChange, error) {
+		out, err := s.SetProperty(in.Path, in.Name, in.Value)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "note_unset_property",
+		Description: "Remove one property from a note's front matter. Undo it with note_remove(id) like note_set_property.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in unsetPropertyInput) (*mcp.CallToolResult, PropertyChange, error) {
+		out, err := s.UnsetProperty(in.Path, in.Name)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
 		Name: "note_recent",
-		Description: "Blocks you wrote that you can still change, newest first, with their current text. " +
-			"Use it to find \"what you just added\".",
+		Description: "Blocks you wrote and property changes you made that you can still change or undo, newest " +
+			"first, with their current text. Use it to find \"what you just added\".",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in recentInput) (*mcp.CallToolResult, RecentResult, error) {
 		out, err := s.Recent(in.Limit)
 		return nil, out, err

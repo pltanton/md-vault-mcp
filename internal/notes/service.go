@@ -471,6 +471,17 @@ func (s *Service) changeBlock(id string, with []string) (WriteResult, error) {
 			return nil, err
 		}
 		e := entries[i]
+		if e.Property != "" {
+			if with != nil {
+				return nil, fmt.Errorf("%s changed property %q; use note_set_property to change it again or note_remove to undo", e.ID, e.Property)
+			}
+			r, err := s.revertProperty(e)
+			if err != nil {
+				return nil, err
+			}
+			res = r
+			return append(entries[:i:i], entries[i+1:]...), nil
+		}
 		real, clean, err := s.vault.ResolveWrite(e.Path)
 		if err != nil {
 			if errors.Is(err, access.ErrNotReadable) {
@@ -521,6 +532,7 @@ func (s *Service) Remove(id string) (WriteResult, error) {
 type RecentBlock struct {
 	ID        string    `json:"id"`
 	Path      string    `json:"path"`
+	Property  string    `json:"property,omitempty" jsonschema:"set for a property change; note_remove undoes it"`
 	Heading   string    `json:"heading,omitempty"`
 	Line      int       `json:"line"`
 	Text      string    `json:"text"`
@@ -553,6 +565,25 @@ func (s *Service) Recent(limit int) (RecentResult, error) {
 		}
 		st, err := s.readFile(real, clean)
 		if err != nil {
+			continue
+		}
+		if e.Property != "" {
+			fm, ok := findFrontMatter(st.doc.lines)
+			if !ok {
+				continue
+			}
+			start, end, found := propertySpan(st.doc.lines, fm, e.Property)
+			if !found && e.Lines > 0 || found && s.journal.hash(st.doc.lines[start:end]) != e.Hash {
+				continue
+			}
+			text := ""
+			if found {
+				text = strings.Join(st.doc.lines[start:end], "\n")
+			}
+			out.Blocks = append(out.Blocks, RecentBlock{
+				ID: e.ID, Path: e.Path, Property: e.Property, Line: start + 1, Text: text,
+				CreatedAt: e.Created, ExpiresAt: e.Created.Add(s.window),
+			})
 			continue
 		}
 		at, err := s.locate(st.doc.lines, e)

@@ -17,14 +17,18 @@ import (
 )
 
 type entry struct {
-	ID      string    `json:"id"`
-	Path    string    `json:"path"`
-	Heading string    `json:"heading,omitempty"`
-	Lines   int       `json:"lines"`
-	Whole   bool      `json:"whole,omitempty"`
-	Hash    string    `json:"hash"`
-	Created time.Time `json:"created_at"`
-	Updated time.Time `json:"updated_at"`
+	ID      string `json:"id"`
+	Path    string `json:"path"`
+	Heading string `json:"heading,omitempty"`
+	Lines   int    `json:"lines"`
+	Whole   bool   `json:"whole,omitempty"`
+	// Property changes keep the replaced lines so note_remove can put them back.
+	Property string    `json:"property,omitempty"`
+	Old      []string  `json:"old,omitempty"`
+	At       int       `json:"at,omitempty"`
+	Hash     string    `json:"hash"`
+	Created  time.Time `json:"created_at"`
+	Updated  time.Time `json:"updated_at"`
 }
 
 type journalFile struct {

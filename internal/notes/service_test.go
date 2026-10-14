@@ -444,7 +444,7 @@ func TestHTTPNeedsToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tools.Tools) != 8 {
+	if len(tools.Tools) != 11 {
 		t.Errorf("%d tools", len(tools.Tools))
 	}
 	res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "note_read", Arguments: map[string]any{"path": "Tasks.md"}})
