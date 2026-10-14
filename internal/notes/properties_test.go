@@ -86,7 +86,7 @@ func TestPropertiesQuery(t *testing.T) {
 			t.Fatalf("got %v", paths(res.Notes))
 		}
 		row := res.Notes[0]
-		if row.Path != "02. Areas/Personal/People/Bob.md" || *row.Next != (NextDate{Date: "2026-10-13", InDays: 1, Years: 36}) {
+		if row.Path != "02. Areas/Personal/People/Bob.md" || *row.Next != (NextDate{Date: "2026-10-13", InDays: 1, Years: 36, Weekday: "Tuesday"}) {
 			t.Fatalf("got %+v %+v", row, row.Next)
 		}
 		if !reflect.DeepEqual(row.Properties, map[string]any{"birthday": "1990-10-13"}) {
@@ -103,10 +103,10 @@ func TestPropertiesQuery(t *testing.T) {
 		for _, r := range res.Notes {
 			got[r.Path] = *r.Next
 		}
-		if got["02. Areas/Personal/People/Carol.md"] != (NextDate{Date: "2027-10-11", InDays: 364, Years: 35}) {
+		if got["02. Areas/Personal/People/Carol.md"] != (NextDate{Date: "2027-10-11", InDays: 364, Years: 35, Weekday: "Monday"}) {
 			t.Fatalf("carol %+v", got["02. Areas/Personal/People/Carol.md"])
 		}
-		if got["02. Areas/Personal/People/Leap.md"] != (NextDate{Date: "2027-02-28", InDays: 139, Years: 27}) {
+		if got["02. Areas/Personal/People/Leap.md"] != (NextDate{Date: "2027-02-28", InDays: 139, Years: 27, Weekday: "Sunday"}) {
 			t.Fatalf("leap %+v", got["02. Areas/Personal/People/Leap.md"])
 		}
 	})

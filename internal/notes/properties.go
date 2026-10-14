@@ -32,9 +32,10 @@ type Upcoming struct {
 }
 
 type NextDate struct {
-	Date   string `json:"date" jsonschema:"next occurrence, YYYY-MM-DD"`
-	InDays int    `json:"in_days" jsonschema:"0 is today"`
-	Years  int    `json:"years,omitempty" jsonschema:"years since the original date on that day, e.g. the age turned"`
+	Date    string `json:"date" jsonschema:"next occurrence, YYYY-MM-DD"`
+	InDays  int    `json:"in_days" jsonschema:"0 is today"`
+	Weekday string `json:"weekday" jsonschema:"day of the week of the next occurrence, in English"`
+	Years   int    `json:"years,omitempty" jsonschema:"years since the original date on that day, e.g. the age turned"`
 }
 
 type PropertyRow struct {
@@ -154,9 +155,10 @@ func nextOccurrence(v any, today time.Time) (NextDate, bool) {
 		next = on(today.Year() + 1)
 	}
 	return NextDate{
-		Date:   next.Format("2006-01-02"),
-		InDays: int(next.Sub(today).Hours()+12) / 24,
-		Years:  next.Year() - d.Year(),
+		Date:    next.Format("2006-01-02"),
+		InDays:  int(next.Sub(today).Hours()+12) / 24,
+		Weekday: next.Weekday().String(),
+		Years:   next.Year() - d.Year(),
 	}, true
 }
 
