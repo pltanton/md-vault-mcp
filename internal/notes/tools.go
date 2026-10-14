@@ -56,6 +56,12 @@ type unsetPropertyInput struct {
 	Name string `json:"name" jsonschema:"property to remove"`
 }
 
+type baseInput struct {
+	Path  string `json:"path" jsonschema:"the .base file, e.g. 02. Areas/Отношения/00. Дни рождений.base"`
+	View  string `json:"view,omitempty" jsonschema:"view name; omit for the first view"`
+	Limit int    `json:"limit,omitempty" jsonschema:"at most this many rows, up to 500"`
+}
+
 type recentInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"at most this many blocks, up to 20"`
 }
@@ -149,6 +155,16 @@ func (s *Service) Register(server *mcp.Server) {
 		Description: "Remove one property from a note's front matter. Undo it with note_remove(id) like note_set_property.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in unsetPropertyInput) (*mcp.CallToolResult, PropertyChange, error) {
 		out, err := s.UnsetProperty(in.Path, in.Name)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "base_query",
+		Description: "Run an Obsidian Bases view (.base file) and get its table: the base's filters, formulas, " +
+			"sorting, grouping and summaries are evaluated here, columns are the view's order. Only notes you may " +
+			"read take part. Fails naming the construct if the base uses something this server does not support.",
+	}, func(_ context.Context, _ *mcp.CallToolRequest, in baseInput) (*mcp.CallToolResult, BaseResult, error) {
+		out, err := s.QueryBase(in.Path, in.View, in.Limit)
 		return nil, out, err
 	})
 

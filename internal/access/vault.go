@@ -44,6 +44,10 @@ func (v *Vault) ResolveRead(rel string) (string, string, error) {
 	return v.resolve(rel, v.Policy.CanRead, ErrNotReadable, false)
 }
 
+func (v *Vault) ResolveReadAny(rel string) (string, string, error) {
+	return v.resolve(rel, v.Policy.CanReadFile, ErrNotReadable, false)
+}
+
 func (v *Vault) ResolveWrite(rel string) (string, string, error) {
 	return v.resolve(rel, v.Policy.CanWrite, ErrNotWritable, false)
 }

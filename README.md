@@ -42,18 +42,34 @@ vault.
 | `note_properties(under?, tag?, has?, equals?, fields?, upcoming?, sort?, limit?)` | Front matter of many notes at once, without their text. `upcoming: {field, days}` keeps notes whose yearly date (birthday) comes within `days` and adds the next date, days left and years. |
 | `note_set_property(path, name, value)` | Set one front matter property; adds front matter if missing. Returns the previous value and an `id`; `note_remove(id)` undoes it. |
 | `note_unset_property(path, name)`    | Remove one front matter property; undo the same way. |
-
-Property edits touch only the lines of that key: other keys, their order,
-comments and quoting stay as written. Lists are written as block sequences and
-dates unquoted, the way Obsidian writes them. Unlike blocks, any property in a
-writable note may be changed; the undo works within the edit window while the
-key still reads as the agent left it.
+| `base_query(path, view?, limit?)`   | Run a view of an Obsidian Bases file (`.base`) and return its table. |
 
 A section ends before the next heading of the same or a higher level, so it
 includes its subsections. New lines go right after the last non-blank line of
 the section, which keeps the blank lines before the next heading where they
 were. Headings inside front matter and fenced code are ignored. Line endings
 (LF or CRLF) and the presence of a final newline are preserved.
+
+`base_query` evaluates the base itself: global and view filters (`and`, `or`,
+`not`), formulas, `sort`, `groupBy`, `limit` and summaries (the built-in ones
+and those defined in the base). Columns are the view's `order`, values come
+typed as JSON (dates as `YYYY-MM-DD[ HH:mm:ss]`, links as `[[target]]`). Only
+notes the client may read take part, and only Markdown notes — attachments a
+base would list in Obsidian are not there. Supported: the operators, date
+arithmetic with durations, `file.*` fields and `hasTag`, `hasLink`,
+`hasProperty`, `inFolder`, `asLink`; `date`, `duration`, `today`, `now`, `if`,
+`list`, `link`, `file`, `min`, `max`, `number`; the string, number, list
+(including `map`, `filter`, `reduce`), date (`format` with Moment tokens,
+`relative`) and object methods, and regular expressions. Not supported:
+`file.backlinks`, `random()`. A base using an unsupported construct fails with
+its name instead of returning a partial table; a value that cannot be computed
+for one note is null and listed in `warnings`.
+
+Property edits touch only the lines of that key: other keys, their order,
+comments and quoting stay as written. Lists are written as block sequences and
+dates unquoted, the way Obsidian writes them. Unlike blocks, any property in a
+writable note may be changed; the undo works within the edit window while the
+key still reads as the agent left it.
 
 ### How the agent's blocks are tracked
 

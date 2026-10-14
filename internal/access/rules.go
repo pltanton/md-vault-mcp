@@ -157,6 +157,11 @@ func (p *Policy) CanRead(rel string) bool {
 	return rel != "" && !Hidden(rel) && p.IsNote(rel) && p.read.allows(split(rel))
 }
 
+// CanReadFile skips the note extension check: .base files are read but never searched or written.
+func (p *Policy) CanReadFile(rel string) bool {
+	return rel != "" && !Hidden(rel) && p.read.allows(split(rel))
+}
+
 func (p *Policy) CanWrite(rel string) bool {
 	return p.CanRead(rel) && p.write.allows(split(rel))
 }
