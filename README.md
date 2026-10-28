@@ -45,6 +45,8 @@ vault.
 | `note_unset_property(path, name)`    | Remove one front matter property; undo the same way. |
 | `base_query(path, view?, limit?)`   | Run a view of an Obsidian Bases file (`.base`) and return its table. |
 | `note_propose(path, edits, reason)` | Propose replacing exact pieces of text the agent may not change directly; a person applies or rejects it on the review page. Applied at once when every edit is inside the agent's own live blocks. Returns the page's URL. |
+| `note_propose_delete(path, reason)` | Propose deleting a note; the result lists the notes that link to it. |
+| `note_propose_move(path, new_path, reason)` | Propose moving or renaming a note; the links to it in notes the agent may write are rewritten in the same proposal. |
 | `note_proposals(status?, limit?)` | The agent's proposals with status (`pending`, `applied`, `rejected`, `stale`, `expired`) and the reviewer's comment. |
 
 A section ends before the next heading of the same or a higher level, so it
@@ -63,8 +65,8 @@ arithmetic with durations, `file.*` fields and `hasTag`, `hasLink`,
 `hasProperty`, `inFolder`, `asLink`; `date`, `duration`, `today`, `now`, `if`,
 `list`, `link`, `file`, `min`, `max`, `number`; the string, number, list
 (including `map`, `filter`, `reduce`), date (`format` with Moment tokens,
-`relative`) and object methods, and regular expressions. Not supported:
-`file.backlinks`, `random()`. A base using an unsupported construct fails with
+`relative`) and object methods, and regular expressions; `file.backlinks`
+counts links from notes the client may read. Not supported: `random()`. A base using an unsupported construct fails with
 its name instead of returning a partial table; a value that cannot be computed
 for one note is null and listed in `warnings`.
 
@@ -118,6 +120,13 @@ every replaced piece of text still occurs exactly once; otherwise the proposal
 becomes `stale`. A decision erases the proposed text and the agent's reason,
 keeping who decided, when and the comment; proposals left pending for 30 days
 expire.
+
+A delete or a move applies only if the note is byte for byte what it was when
+proposed. A move rewrites wikilinks, embeds and Markdown links to the note,
+keeping headings, aliases and the link's form (a bare `[[Name]]` stays bare
+while the new name is unique); a note whose link changed in between is skipped
+and listed. Links from notes the agent may not read are not seen, and relative
+Markdown links inside the moved note itself are not adjusted.
 
 ## Access rules
 
