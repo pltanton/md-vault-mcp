@@ -72,6 +72,17 @@ type proposeInput struct {
 	Reason string `json:"reason" jsonschema:"why, for the person who reviews it, in one or two sentences"`
 }
 
+type proposeDeleteInput struct {
+	Path   string `json:"path" jsonschema:"note to delete"`
+	Reason string `json:"reason" jsonschema:"why, for the person who reviews it"`
+}
+
+type proposeMoveInput struct {
+	Path    string `json:"path" jsonschema:"note to move or rename"`
+	NewPath string `json:"new_path" jsonschema:"where it goes, e.g. 02. Areas/People/Мама.md; must not exist"`
+	Reason  string `json:"reason" jsonschema:"why, for the person who reviews it"`
+}
+
 type proposalsInput struct {
 	Status string `json:"status,omitempty" jsonschema:"pending, applied, rejected, stale or expired; omit for all"`
 	Limit  int    `json:"limit,omitempty" jsonschema:"at most this many, up to 50"`
@@ -202,6 +213,25 @@ func (s *Service) Register(server *mcp.Server) {
 			"still change, it is applied at once instead. See the outcome with note_proposals.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in proposeInput) (*mcp.CallToolResult, ProposeResult, error) {
 		out, err := s.Propose(ctx, in.Path, in.Edits, in.Reason)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "note_propose_delete",
+		Description: "Propose deleting a note you may write. A person applies or rejects it on the review page; give " +
+			"them the url. The result lists the notes that link to it, whose links would break.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in proposeDeleteInput) (*mcp.CallToolResult, ProposeResult, error) {
+		out, err := s.ProposeDelete(ctx, in.Path, in.Reason)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "note_propose_move",
+		Description: "Propose moving or renaming a note you may write. The links to it in other notes you may write " +
+			"are rewritten in the same proposal; notes you may not change are listed in unwritable. A person applies " +
+			"or rejects it on the review page; give them the url.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in proposeMoveInput) (*mcp.CallToolResult, ProposeResult, error) {
+		out, err := s.ProposeMove(ctx, in.Path, in.NewPath, in.Reason)
 		return nil, out, err
 	})
 

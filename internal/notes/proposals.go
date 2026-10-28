@@ -21,10 +21,13 @@ const (
 )
 
 type ProposeResult struct {
-	ID     string `json:"id,omitempty"`
-	URL    string `json:"url,omitempty" jsonschema:"page where a person applies or rejects it; give it to them"`
-	Status string `json:"status" jsonschema:"pending, or applied when every edit was inside blocks you may still change"`
-	Path   string `json:"path"`
+	ID         string   `json:"id,omitempty"`
+	URL        string   `json:"url,omitempty" jsonschema:"page where a person applies or rejects it; give it to them"`
+	Status     string   `json:"status" jsonschema:"pending, or applied when every edit was inside blocks you may still change"`
+	Path       string   `json:"path"`
+	Links      int      `json:"links,omitempty" jsonschema:"for a move: links in other notes that will be rewritten"`
+	Linked     []string `json:"linked,omitempty" jsonschema:"for a delete: notes that link to it and will have broken links"`
+	Unwritable []string `json:"unwritable,omitempty" jsonschema:"notes linking to it that you may not change; their links will break"`
 }
 
 type ProposalInfo struct {
@@ -254,8 +257,14 @@ func splitText(s string) []string {
 func (s *Service) ApplyProposal(ctx context.Context, id, by, comment string) (index.Proposal, error) {
 	applied := false
 	p, err := s.index.Decide(ctx, id, func(p index.Proposal) (index.Decision, error) {
-		if p.Kind != "edit" {
-			return index.Decision{}, fmt.Errorf("%s proposals cannot be applied by this version", p.Kind)
+		switch p.Kind {
+		case "delete":
+			return s.applyDelete(p, by, comment)
+		case "move":
+			return s.applyMove(p, by, comment)
+		case "edit":
+		default:
+			return index.Decision{}, fmt.Errorf("unknown proposal kind %s", p.Kind)
 		}
 		var edits []Edit
 		if err := json.Unmarshal(p.Edits, &edits); err != nil {

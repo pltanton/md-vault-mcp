@@ -167,3 +167,5 @@ func TestSearchSeesAgentWrites(t *testing.T) {
 		t.Errorf("after set property: %s", got)
 	}
 }
+
+func accessRules() access.RuleSet { return access.RuleSet{} }
