@@ -44,6 +44,8 @@ vault.
 | `note_set_property(path, name, value)` | Set one front matter property; adds front matter if missing. Returns the previous value and an `id`; `note_remove(id)` undoes it. |
 | `note_unset_property(path, name)`    | Remove one front matter property; undo the same way. |
 | `base_query(path, view?, limit?)`   | Run a view of an Obsidian Bases file (`.base`) and return its table. |
+| `note_propose(path, edits, reason)` | Propose replacing exact pieces of text the agent may not change directly; a person applies or rejects it on the review page. Applied at once when every edit is inside the agent's own live blocks. Returns the page's URL. |
+| `note_proposals(status?, limit?)` | The agent's proposals with status (`pending`, `applied`, `rejected`, `stale`, `expired`) and the reviewer's comment. |
 
 A section ends before the next heading of the same or a higher level, so it
 includes its subsections. New lines go right after the last non-blank line of
@@ -105,6 +107,18 @@ Expired entries are dropped from the journal. The HMAC key is generated on
 first start and kept next to the journal, so the hashes of short lines (`- [ ]
 milk`) cannot be guessed from the journal alone.
 
+### Review
+
+With `[review]` configured, the server also serves a page on its own listener
+where people apply or reject the agent's proposals. Login is OpenID Connect
+(code flow with PKCE) against the configured issuer; only members of
+`allowed_groups` get in (a `groups` claim of `name@domain` counts as `name`),
+and the agent's bearer token is never accepted there. Applying checks that
+every replaced piece of text still occurs exactly once; otherwise the proposal
+becomes `stale`. A decision erases the proposed text and the agent's reason,
+keeping who decided, when and the comment; proposals left pending for 30 days
+expire.
+
 ## Access rules
 
 ```toml
@@ -151,6 +165,12 @@ See [`md-vault-mcp.example.toml`](md-vault-mcp.example.toml).
 | `transport`       | `stdio`   | `stdio` or `http`.                                  |
 | `http.listen`     | —         | e.g. `127.0.0.1:8093`.                              |
 | `http.token_file` | —         | File with the bearer token, at least 16 characters. |
+| `review.listen`   | —         | Address of the review page, e.g. `127.0.0.1:8193`. |
+| `review.public_url` | —       | Address people open; proposal links and the OIDC redirect (`/callback`) use it. |
+| `review.allowed_groups` | —   | Groups from the `groups` claim that may apply or reject. |
+| `review.oidc_issuer` | —      | OIDC issuer URL. |
+| `review.oidc_client_id` | —   | OIDC client id. |
+| `review.oidc_client_secret_file` | — | File with the client secret. |
 
 Flags `-transport`, `-listen` and `-token-file` override the config.
 
@@ -220,6 +240,9 @@ exists and one instance cannot open another's database. The module enables
 `services.postgresql` and adds the dictionary to its extensions, which restarts
 Postgres on the first deploy. To use another server, set
 `database.createLocally = false` and `database.url`.
+
+`review.enable` and its options add the review page; the client secret goes
+through `LoadCredential` as `oidc`.
 
 ## Security model
 
