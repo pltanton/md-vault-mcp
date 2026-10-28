@@ -145,8 +145,8 @@
     lib.nameValuePair "md-vault-mcp-${name}" {
       description = "md-vault-mcp ${name}, scoped MCP access to a Markdown vault";
       wantedBy = ["multi-user.target"];
-      after = ["network.target"] ++ lib.optional inst.database.createLocally "postgresql.service";
-      requires = lib.optional inst.database.createLocally "postgresql.service";
+      after = ["network.target"] ++ lib.optional inst.database.createLocally "postgresql.target";
+      requires = lib.optional inst.database.createLocally "postgresql.target";
 
       serviceConfig = {
         ExecStart = "${lib.getExe cfg.package} -config ${configFile}";

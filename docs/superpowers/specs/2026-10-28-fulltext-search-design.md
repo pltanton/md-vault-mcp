@@ -68,7 +68,8 @@ For every instance `<name>` it:
   database and no password exists;
 - sets `database_url` to `host=/run/postgresql dbname=md_vault_mcp_<name>
 user=md_vault_mcp_<name>`;
-- orders the service `after` and `requires` `postgresql.service`.
+- orders the service `after` and `requires` `postgresql.target`, which is reached
+  once the roles and databases exist.
 
 Instance option `database.createLocally` (default `true`) turns the above off;
 then `database.url` must be set and is passed through as is.
