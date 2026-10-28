@@ -6,6 +6,8 @@
 }: let
   cfg = config.services.md-vault-mcp;
   toml = pkgs.formats.toml {};
+  dbName = name: "md_vault_mcp_" + lib.replaceStrings ["-"] ["_"] name;
+  local = lib.filterAttrs (_: inst: inst.database.createLocally) cfg.instances;
 
   ruleSetType = lib.types.submodule {
     options = {
@@ -85,6 +87,23 @@
         default = [".md"];
       };
 
+      database = {
+        createLocally = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = ''
+            Create a role and a database md_vault_mcp_<name> in the local
+            services.postgresql and connect over its unix socket with peer
+            authentication mapped from the instance's user.
+          '';
+        };
+        url = lib.mkOption {
+          type = lib.types.nullOr lib.types.str;
+          default = null;
+          description = "Connection string used when createLocally is off.";
+        };
+      };
+
       read = lib.mkOption {
         type = ruleSetType;
         default = {};
@@ -107,6 +126,10 @@
     configFile = toml.generate "md-vault-mcp-${name}.toml" ({
         inherit (inst) vault extensions;
         state_dir = "/var/lib/${inst.stateDirectory}";
+        database_url =
+          if inst.database.createLocally
+          then "host=/run/postgresql dbname=${dbName name} user=${dbName name}"
+          else inst.database.url;
         edit_window = inst.editWindow;
         max_file_size = inst.maxFileSize;
         read = ruleSettings inst.read;
@@ -122,7 +145,8 @@
     lib.nameValuePair "md-vault-mcp-${name}" {
       description = "md-vault-mcp ${name}, scoped MCP access to a Markdown vault";
       wantedBy = ["multi-user.target"];
-      after = ["network.target"];
+      after = ["network.target"] ++ lib.optional inst.database.createLocally "postgresql.service";
+      requires = lib.optional inst.database.createLocally "postgresql.service";
 
       serviceConfig = {
         ExecStart = "${lib.getExe cfg.package} -config ${configFile}";
@@ -185,5 +209,24 @@ in {
     users.groups = lib.mkIf (usesDefault "group") {md-vault-mcp = {};};
 
     systemd.services = lib.mapAttrs' service cfg.instances;
+
+    assertions =
+      lib.mapAttrsToList (name: inst: {
+        assertion = inst.database.createLocally || inst.database.url != null;
+        message = "services.md-vault-mcp.instances.${name}: set database.url or keep database.createLocally";
+      })
+      cfg.instances;
+
+    services.postgresql = lib.mkIf (local != {}) {
+      enable = true;
+      extensions = [(pkgs.callPackage ./hunspell-ru.nix {})];
+      ensureDatabases = map dbName (lib.attrNames local);
+      ensureUsers = map (name: {
+        name = dbName name;
+        ensureDBOwnership = true;
+      }) (lib.attrNames local);
+      identMap = lib.concatLines (lib.mapAttrsToList (name: inst: "md-vault-mcp ${inst.user} ${dbName name}") local);
+      authentication = lib.concatLines (map (name: "local ${dbName name} ${dbName name} peer map=md-vault-mcp") (lib.attrNames local));
+    };
   };
 }
