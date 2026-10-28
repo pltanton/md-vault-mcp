@@ -104,6 +104,34 @@
         };
       };
 
+      review = {
+        enable = lib.mkEnableOption "the page where people apply or reject the agent's proposals";
+        listen = lib.mkOption {
+          type = lib.types.str;
+          example = "127.0.0.1:8193";
+        };
+        publicUrl = lib.mkOption {
+          type = lib.types.str;
+          example = "https://notes.example.org";
+          description = "Address people open; the proposal links and the OIDC redirect use it.";
+        };
+        allowedGroups = lib.mkOption {
+          type = lib.types.listOf lib.types.str;
+          description = "Groups whose members may apply or reject, compared with the part of each groups claim before @.";
+        };
+        oidc = {
+          issuer = lib.mkOption {
+            type = lib.types.str;
+            example = "https://id.example.org/oauth2/openid/notes";
+          };
+          clientId = lib.mkOption {type = lib.types.str;};
+          clientSecretFile = lib.mkOption {
+            type = lib.types.str;
+            description = "Runtime path of the client secret, passed via LoadCredential; not a Nix path.";
+          };
+        };
+      };
+
       read = lib.mkOption {
         type = ruleSetType;
         default = {};
@@ -140,6 +168,16 @@
           token_file = "/run/credentials/md-vault-mcp-${name}.service/token";
         };
       }
+      // lib.optionalAttrs inst.review.enable {
+        review = {
+          inherit (inst.review) listen;
+          public_url = inst.review.publicUrl;
+          allowed_groups = inst.review.allowedGroups;
+          oidc_issuer = inst.review.oidc.issuer;
+          oidc_client_id = inst.review.oidc.clientId;
+          oidc_client_secret_file = "/run/credentials/md-vault-mcp-${name}.service/oidc";
+        };
+      }
       // inst.extraSettings);
   in
     lib.nameValuePair "md-vault-mcp-${name}" {
@@ -152,7 +190,7 @@
         ExecStart = "${lib.getExe cfg.package} -config ${configFile}";
         User = inst.user;
         Group = inst.group;
-        LoadCredential = ["token:${inst.tokenFile}"];
+        LoadCredential = ["token:${inst.tokenFile}"] ++ lib.optional inst.review.enable "oidc:${inst.review.oidc.clientSecretFile}";
         StateDirectory = inst.stateDirectory;
         StateDirectoryMode = "0700";
         Restart = "on-failure";
