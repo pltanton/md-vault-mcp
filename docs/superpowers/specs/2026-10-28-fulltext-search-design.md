@@ -23,12 +23,15 @@ room for vector search (pgvector, RAG) without a redesign.
   e.g. `.stversions`, `.syncthing.*.tmp`) never are.
 - Text search configuration `md_vault`, created by a migration: a copy of the
   built-in `russian` where Cyrillic words (`word`, `hword`, `hword_part`) go
-  first through the hunspell dictionary `md_vault_ru` (real lemmas: `подарки`,
-  `подарка` → `подарок`, `дня` → `день`) and fall back to `russian_stem` for
-  words the dictionary lacks; ASCII words keep `english_stem`. Snowball alone
-  was measured to miss fleeting vowels (`подарок`/`подарки`, `день`/`дня`).
+  first through the synonym dictionary `ru_stem_fixes`
+  (github:pltanton/ru-stem-fixes: every OpenCorpora form whose Snowball stem
+  differs from its lemma's, mapped onto the lemma's stem) and fall back to
+  `russian_stem`; ASCII words keep `english_stem`. Snowball alone was measured
+  to miss fleeting vowels (`подарок`/`подарки`, `день`/`дня`). The hunspell
+  `ru_RU` dictionary was tried first and dropped: it lists oblique forms such as
+  `ковра` and `сна` as words of their own.
 - Text and queries are normalized in Go before they reach Postgres: lowercased,
-  `ё` replaced with `е` (the dictionary lemmatizes them differently), invalid
+  `ё` replaced with `е`, invalid
   UTF-8 and NUL bytes dropped (Postgres rejects them). Lowercasing in Go also
   keeps Cyrillic case folding independent of the cluster's locale.
 - Query syntax: `websearch_to_tsquery` (quoted phrases, `-word`, `or`).
@@ -44,12 +47,12 @@ string, e.g. `host=/run/postgresql dbname=md_vault_mcp_anton`).
 
 ### Dictionary package
 
-`nix/hunspell-ru.nix` builds `share/postgresql/tsearch_data/md_vault_ru.dict`
-and `.affix` from `hunspellDicts.ru_RU` (KOI8-R, converted with `iconv` to
-UTF-8, the `SET KOI8-R` line rewritten to `SET UTF-8`). The flake exports it as
-`packages.<system>.hunspell-ru`. Postgres reads dictionaries only from its share
-directory, which `postgresql.withPackages` merges, so the package is added the
-same way as an extension; Postgres itself is not rebuilt.
+The flake input `ru-stem-fixes` provides
+`share/postgresql/tsearch_data/ru_stem_fixes.syn`. Postgres reads dictionaries
+only from its share directory, which `postgresql.withPackages` merges, so the
+package is added the same way as an extension; Postgres itself is not rebuilt.
+The module takes it through `services.md-vault-mcp.stemFixesPackage`, which the
+flake's `nixosModules.default` sets.
 
 ### NixOS module
 
@@ -214,10 +217,11 @@ For a name-only hit `heading`, `start_line`, `end_line` and `lines` are absent.
   the next search.
 - Watcher: write a file and poll search until it appears; Syncthing-style write
   to a hidden temp file followed by rename; new subdirectory.
-- Lemmas: `подарки` finds `подарок`, `дня` finds `день`, `ёлка` finds `елки`.
+- Word forms: `подарок`/`подарки`, `день`/`дня`, `ковёр`/`ковра`, `рот`/`рту`,
+  `идти`/`шла`, `ребёнок`/`ребенка`.
 - Migrations run as a non-superuser role that owns its database, as in
   production.
-- `devShell` gets `postgresql.withPackages (_: [hunspell-ru])`, so `initdb` on
+- `devShell` gets `postgresql.withPackages (_: [ru-stem-fixes])`, so `initdb` on
   `PATH` has the dictionary. The package build keeps running no tests
   (`subPackages` is `cmd/md-vault-mcp`, which has none); run `go test ./...` in
   the dev shell.

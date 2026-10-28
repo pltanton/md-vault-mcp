@@ -43,13 +43,26 @@ func TestOpenMigratesOnce(t *testing.T) {
 	}
 }
 
-func TestDictionaryLemmatizes(t *testing.T) {
+func TestFormsMeetTheirLemma(t *testing.T) {
 	ix := open(t)
-	var got string
-	must(t, ix.pool.QueryRow(context.Background(),
-		`SELECT to_tsvector('md_vault', 'подарки дня отца gifts ковальски')::text`).Scan(&got))
-	if want := `'gift':4 'день':2 'ковальск':5 'отец':3 'подарок':1`; got != want {
-		t.Errorf("got %s, want %s", got, want)
+	for _, c := range [][2]string{
+		{"подарок", "подарки маме"},
+		{"день", "два дня"},
+		{"отец", "у отца"},
+		{"ковёр", "нет ковра"},
+		{"рот", "во рту"},
+		{"идти", "она шла"},
+		{"сон", "без сна"},
+		{"ребёнок", "у ребенка"},
+		{"gift", "gifts"},
+	} {
+		var ok bool
+		must(t, ix.pool.QueryRow(context.Background(),
+			"SELECT to_tsvector('md_vault', $2) @@ websearch_to_tsquery('md_vault', $1)",
+			normalize(c[0]), normalize(c[1])).Scan(&ok))
+		if !ok {
+			t.Errorf("%q does not find %q", c[0], c[1])
+		}
 	}
 }
 

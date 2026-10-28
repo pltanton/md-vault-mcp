@@ -18,7 +18,28 @@
     },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "ru-stem-fixes": "ru-stem-fixes"
+      }
+    },
+    "ru-stem-fixes": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793186467,
+        "narHash": "sha256-oE41Q7m8Wa1MrvFEvF9fRFFiXNQNM/+zgCjse4GmgXs=",
+        "owner": "pltanton",
+        "repo": "ru-stem-fixes",
+        "rev": "1e418bb5bce89ce264cb7f8c763a4d2e8282d8d6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "pltanton",
+        "repo": "ru-stem-fixes",
+        "type": "github"
       }
     }
   },

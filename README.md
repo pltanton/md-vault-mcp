@@ -19,7 +19,7 @@ handing it the whole folder.
   limited time (48 hours by default) and only while nobody else has touched
   them. The owner's own text is never rewritten.
 - **No copy of your text.** The journal of what the agent wrote stores keyed
-  hashes and line counts; the search index stores lemmatized words, paths, line
+  hashes and line counts; the search index stores word stems, paths, line
   ranges, sizes and modification times. Neither stores note text.
 - **stdio or streamable HTTP**, the latter behind a bearer token.
 
@@ -76,16 +76,17 @@ key still reads as the agent left it.
 
 The index lives in Postgres (`database_url`). A note is cut into sections at
 every heading (and at the front matter); a section longer than 40 lines is cut
-into 40-line pieces. Russian words are lemmatized with the hunspell `ru_RU`
-dictionary (`подарки` → `подарок`, `дня` → `день`), falling back to the Snowball
-stemmer for words it lacks; English words use the Snowball stemmer. `ё` counts as
-`е`. At startup the server reindexes notes whose size or modification time
+into 40-line pieces. Words are stemmed with Snowball (Russian and English);
+Russian forms whose stem Snowball splits from their lemma's (`подарки` and
+`подарок`, `дня` and `день`, `рту` and `рот`) are joined first by the
+[ru-stem-fixes](https://github.com/pltanton/ru-stem-fixes) synonym dictionary.
+`ё` counts as `е`. At startup the server reindexes notes whose size or modification time
 changed and drops those that are gone or no longer readable, then follows
 changes with inotify; its own writes are reindexed before the tool returns.
 Headings and matching lines are read from the files when a search runs.
 
-The dictionary must be in Postgres' `tsearch_data` directory: the flake builds it
-as `packages.<system>.hunspell-ru`, and the NixOS module installs it.
+`ru_stem_fixes.syn` must be in Postgres' `tsearch_data` directory; the NixOS
+module from this flake installs it, and the dev shell's Postgres has it.
 
 ### How the agent's blocks are tracked
 

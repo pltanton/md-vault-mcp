@@ -192,6 +192,15 @@ in {
       defaultText = lib.literalExpression "pkgs.callPackage ./nix/package.nix {}";
     };
 
+    stemFixesPackage = lib.mkOption {
+      type = lib.types.package;
+      description = ''
+        ru-stem-fixes (github:pltanton/ru-stem-fixes), installed into the local
+        Postgres for instances with database.createLocally. The flake's
+        nixosModules.default sets it.
+      '';
+    };
+
     instances = lib.mkOption {
       type = lib.types.attrsOf instanceType;
       default = {};
@@ -219,7 +228,7 @@ in {
 
     services.postgresql = lib.mkIf (local != {}) {
       enable = true;
-      extensions = [(pkgs.callPackage ./hunspell-ru.nix {})];
+      extensions = [cfg.stemFixesPackage];
       ensureDatabases = map dbName (lib.attrNames local);
       ensureUsers = map (name: {
         name = dbName name;

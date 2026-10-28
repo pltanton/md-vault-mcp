@@ -1,14 +1,9 @@
-CREATE TEXT SEARCH DICTIONARY md_vault_ru (
-  TEMPLATE = ispell,
-  DictFile = md_vault_ru,
-  AffFile = md_vault_ru,
-  StopWords = russian
-);
+CREATE TEXT SEARCH DICTIONARY ru_stem_fixes (TEMPLATE = synonym, SYNONYMS = ru_stem_fixes);
 
 CREATE TEXT SEARCH CONFIGURATION md_vault (COPY = russian);
 
 ALTER TEXT SEARCH CONFIGURATION md_vault
-  ALTER MAPPING FOR word, hword, hword_part WITH md_vault_ru, russian_stem;
+  ALTER MAPPING FOR word, hword, hword_part WITH ru_stem_fixes, russian_stem;
 
 CREATE TABLE files (
   path     text PRIMARY KEY,
