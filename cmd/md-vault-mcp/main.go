@@ -6,9 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -17,6 +19,7 @@ import (
 
 	"github.com/pltanton/md-vault-mcp/internal/index"
 	"github.com/pltanton/md-vault-mcp/internal/notes"
+	"github.com/pltanton/md-vault-mcp/internal/review"
 )
 
 var version = "dev"
@@ -78,8 +81,18 @@ func run(configPath, transport, listen, tokenFile string) error {
 	if err := svc.Watch(ctx); err != nil {
 		return fmt.Errorf("watch: %w", err)
 	}
+	if cfg.Review != nil {
+		svc.EnableReview(cfg.Review.PublicURL)
+	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "md-vault", Version: version}, nil)
 	svc.Register(server)
+	if cfg.Review != nil {
+		stopReview, err := startReview(ctx, svc, cfg)
+		if err != nil {
+			return fmt.Errorf("review: %w", err)
+		}
+		defer stopReview()
+	}
 
 	switch cfg.Transport {
 	case "", "stdio":
@@ -122,4 +135,50 @@ func serveHTTP(ctx context.Context, server *mcp.Server, cfg notes.Config) error 
 		defer cancel()
 		return srv.Shutdown(shutdown)
 	}
+}
+
+func startReview(ctx context.Context, svc *notes.Service, cfg notes.Config) (func(), error) {
+	r := cfg.Review
+	secret, err := os.ReadFile(r.OIDCClientSecretFile)
+	if err != nil {
+		return nil, err
+	}
+	key, err := review.LoadKey(filepath.Join(cfg.StateDir, "review.key"))
+	if err != nil {
+		return nil, err
+	}
+	rs := review.New(review.Config{
+		PublicURL: r.PublicURL, AllowedGroups: r.AllowedGroups, Issuer: r.OIDCIssuer,
+		ClientID: r.OIDCClientID, ClientSecret: strings.TrimSpace(string(secret)), Key: key,
+	}, svc)
+	ln, err := net.Listen("tcp", r.Listen)
+	if err != nil {
+		return nil, err
+	}
+	srv := &http.Server{Handler: rs.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("review: %v", err)
+		}
+	}()
+	go func() {
+		tick := time.NewTicker(time.Hour)
+		defer tick.Stop()
+		for {
+			if err := svc.ExpireProposals(ctx); err != nil && ctx.Err() == nil {
+				log.Printf("expire proposals: %v", err)
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+			}
+		}
+	}()
+	log.Printf("review page on %s", r.Listen)
+	return func() {
+		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(shutdown)
+	}, nil
 }

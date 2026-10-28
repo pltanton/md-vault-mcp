@@ -14,7 +14,7 @@ func TestLoadExampleConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if cfg.EditWindow != 48*time.Hour || cfg.Read.Mode != "allowlist" || len(cfg.Write.Allow) != 2 || cfg.Listen != "127.0.0.1:8093" ||
-		cfg.DatabaseURL != "host=/run/postgresql dbname=md_vault_mcp" {
+		cfg.DatabaseURL != "host=/run/postgresql dbname=md_vault_mcp" || cfg.Review == nil || cfg.Review.Listen != "127.0.0.1:8193" {
 		t.Errorf("got %+v", cfg)
 	}
 }

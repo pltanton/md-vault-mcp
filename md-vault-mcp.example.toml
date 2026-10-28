@@ -20,3 +20,12 @@ allow = ["00. Inbox/**", "02. Areas/Personal/**"]
 [http]
 listen = "127.0.0.1:8093"
 token_file = "/run/secrets/md-vault-mcp-token"
+
+# Optional: a page where people apply or reject the agent's proposals.
+[review]
+listen = "127.0.0.1:8193"
+public_url = "https://notes.example.org"
+allowed_groups = ["admins"]
+oidc_issuer = "https://id.example.org/oauth2/openid/notes"
+oidc_client_id = "notes"
+oidc_client_secret_file = "/run/secrets/md-vault-mcp-oidc"
