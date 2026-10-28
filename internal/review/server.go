@@ -2,7 +2,10 @@ package review
 
 import (
 	"context"
+	"crypto/hmac"
 	"html/template"
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -67,4 +70,48 @@ func (s *Server) oidcClient() (*oidc.Provider, *oauth2.Config, error) {
 		RedirectURL:  s.cfg.PublicURL + "/callback",
 		Scopes:       []string{oidc.ScopeOpenID, "profile", "groups"},
 	}, nil
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /login", s.login)
+	mux.HandleFunc("GET /callback", s.callback)
+	mux.Handle("POST /logout", s.auth(s.logout))
+	mux.Handle("GET /{$}", s.auth(s.list))
+	mux.Handle("GET /p/{id}", s.auth(s.show))
+	mux.Handle("POST /p/{id}/apply", s.auth(s.decide(true)))
+	mux.Handle("POST /p/{id}/reject", s.auth(s.decide(false)))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("Referrer-Policy", "no-referrer")
+		mux.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) auth(next func(http.ResponseWriter, *http.Request, viewer)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var sess session
+		var raw string
+		ok := false
+		if c, err := r.Cookie(sessionCookie); err == nil {
+			raw = c.Value
+			sess, ok = s.sessionFrom(raw)
+		}
+		if !ok {
+			if r.Method != http.MethodGet {
+				s.message(w, http.StatusForbidden, viewer{}, "Сессия закончилась", "Войди заново и повтори.")
+				return
+			}
+			http.Redirect(w, r, "/login?next="+url.QueryEscape(r.URL.Path), http.StatusSeeOther)
+			return
+		}
+		v := viewer{User: sess.User, CSRF: s.csrfToken(raw)}
+		if r.Method == http.MethodPost && !hmac.Equal([]byte(r.PostFormValue("csrf")), []byte(v.CSRF)) {
+			s.message(w, http.StatusForbidden, v, "Форма устарела", "Обнови страницу и повтори.")
+			return
+		}
+		next(w, r, v)
+	})
 }

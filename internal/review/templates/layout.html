@@ -1,0 +1,199 @@
+{{define "head"}}<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Title}}</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ground: #f4f6f3;
+        --surface: #fff;
+        --ink: #1b2320;
+        --muted: #5d6a63;
+        --line: #dce3de;
+        --accent: #2c6b59;
+        --add: #e2f2e7;
+        --del: #f7e2df;
+        --warn: #8a5a12;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ground: #121614;
+          --surface: #1a201d;
+          --ink: #e3e9e5;
+          --muted: #94a29a;
+          --line: #2c3531;
+          --accent: #72bba5;
+          --add: #18321f;
+          --del: #3a1f1c;
+          --warn: #e2b66a;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font:
+          16px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        padding: 0 16px;
+      }
+      header {
+        max-width: 860px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      header > a {
+        color: var(--ink);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 24px 0 64px;
+        display: grid;
+        gap: 18px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      h2 {
+        font-size: 1.05rem;
+        margin: 8px 0 0;
+      }
+      p {
+        margin: 0;
+      }
+      a {
+        color: var(--accent);
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      ul.items {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      ul.items li {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        justify-content: space-between;
+      }
+      .diff {
+        font:
+          13px/1.45 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .diff div {
+        padding: 1px 10px;
+        white-space: pre;
+      }
+      .diff .ctx {
+        color: var(--muted);
+      }
+      .diff .del {
+        background: var(--del);
+      }
+      .diff .add {
+        background: var(--add);
+      }
+      .stale,
+      .error {
+        color: var(--warn);
+        font-weight: 600;
+      }
+      .note {
+        border-left: 3px solid var(--line);
+        padding-left: 10px;
+        color: var(--muted);
+      }
+      form.decide {
+        display: grid;
+        gap: 10px;
+      }
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        min-height: 70px;
+        font: inherit;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      button {
+        font: inherit;
+        padding: 7px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--surface);
+      }
+      button:focus-visible,
+      a:focus-visible,
+      textarea:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      form.inline {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">Правки агента</a>{{if .Viewer.User}}
+      <form class="inline" method="post" action="/logout">
+        <input type="hidden" name="csrf" value="{{.Viewer.CSRF}}" /><span
+          class="muted"
+          >{{.Viewer.User}}</span
+        ><button type="submit">Выйти</button>
+      </form>
+      {{end}}
+    </header>
+    <main>{{end}} {{define "foot"}}</main>
+  </body>
+</html>
+{{end}}
