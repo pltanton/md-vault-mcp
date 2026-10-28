@@ -298,6 +298,9 @@ func (s *Service) Add(rel, text, headingLine string) (WriteResult, error) {
 		res = WriteResult{ID: e.ID, Path: clean, Line: at + 1, Lines: len(add), ExpiresAt: now.Add(s.window)}
 		return append(s.live(entries), e), nil
 	})
+	if err == nil {
+		s.reindexQuietly(res.Path)
+	}
 	return res, err
 }
 
@@ -335,6 +338,9 @@ func (s *Service) Create(rel, text string) (WriteResult, error) {
 		res = WriteResult{ID: e.ID, Path: clean, Line: 1, Lines: len(content), ExpiresAt: now.Add(s.window)}
 		return append(s.live(entries), e), nil
 	})
+	if err == nil {
+		s.reindexQuietly(res.Path)
+	}
 	return res, err
 }
 
@@ -452,6 +458,9 @@ func (s *Service) changeBlock(id string, with []string) (WriteResult, error) {
 		entries[i] = e
 		return s.live(entries), nil
 	})
+	if err == nil {
+		s.reindexQuietly(res.Path)
+	}
 	return res, err
 }
 

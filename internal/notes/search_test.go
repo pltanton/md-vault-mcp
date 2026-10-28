@@ -131,3 +131,39 @@ func TestSearchReindexesStaleRanges(t *testing.T) {
 		t.Errorf("still found after reindex: %+v", m)
 	}
 }
+
+func TestSearchSeesAgentWrites(t *testing.T) {
+	f := newIndexedFixture(t)
+	add, err := f.svc.Add(julia, "- Варежки", "## Идеи для подарков")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := matchKeys(f.search("варежки", "")); got != julia+":6" {
+		t.Errorf("after add: %s", got)
+	}
+	if _, err := f.svc.Edit(add.ID, "- Перчатки"); err != nil {
+		t.Fatal(err)
+	}
+	if got := matchKeys(f.search("варежки", "")); got != "" {
+		t.Errorf("after edit: %s", got)
+	}
+	created, err := f.svc.Create("00. Inbox/Носки.md", "шерстяные носки")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := matchKeys(f.search("шерстяные", "")); got != "00. Inbox/Носки.md:1" {
+		t.Errorf("after create: %s", got)
+	}
+	if _, err := f.svc.Remove(created.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := matchKeys(f.search("шерстяные", "")); got != "" {
+		t.Errorf("after removing the created note: %s", got)
+	}
+	if _, err := f.svc.SetProperty("Tasks.md", "status", "срочно"); err != nil {
+		t.Fatal(err)
+	}
+	if got := matchKeys(f.search("срочно", "")); got != "Tasks.md:1" {
+		t.Errorf("after set property: %s", got)
+	}
+}

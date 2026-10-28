@@ -306,6 +306,9 @@ func (s *Service) changeProperty(rel, name string, with []string, value any) (Pr
 		res = PropertyChange{ID: e.ID, Path: clean, Name: name, Previous: props[name], Value: value, ExpiresAt: now.Add(s.window)}
 		return append(s.live(entries), e), nil
 	})
+	if err == nil {
+		s.reindexQuietly(res.Path)
+	}
 	return res, err
 }
 
