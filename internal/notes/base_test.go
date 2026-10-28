@@ -201,3 +201,25 @@ func TestQueryBaseAccess(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestBacklinks(t *testing.T) {
+	q := &baseQuery{now: time.Now(), formulas: map[string]node{}, byPath: map[string]*baseFile{}, byName: map[string]*baseFile{}}
+	add := func(p string, links ...string) *baseFile {
+		f := &baseFile{path: p, props: map[string]any{}, formulas: map[string]any{}}
+		for _, l := range links {
+			f.links = append(f.links, linkVal{target: l})
+		}
+		q.files = append(q.files, f)
+		q.byPath[strings.ToLower(p)] = f
+		q.byName[strings.ToLower(f.basename())] = f
+		return f
+	}
+	bob := add("People/Bob.md", "Bob")
+	add("A.md", "Bob", "People/Bob")
+	add("B.md", "Bob.md")
+	add("C.md", "Alice")
+	got, ok := evalString(t, q, bob, "file.backlinks").([]any)
+	if !ok || len(got) != 2 {
+		t.Errorf("got %#v", evalString(t, q, bob, "file.backlinks"))
+	}
+}

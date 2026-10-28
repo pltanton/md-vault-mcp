@@ -90,7 +90,7 @@ func (f *baseFile) field(q *baseQuery, name string) (any, error) {
 	case "file":
 		return f, nil
 	case "backlinks":
-		return nil, errUnsupported{"file.backlinks"}
+		return q.backlinksOf(f), nil
 	}
 	return nil, nil
 }
@@ -152,13 +152,14 @@ func (f *baseFile) hasLink(q *baseQuery, other any) bool {
 }
 
 type baseQuery struct {
-	now      time.Time
-	this     *baseFile
-	files    []*baseFile
-	byPath   map[string]*baseFile
-	byName   map[string]*baseFile
-	formulas map[string]node
-	warnings []string
+	now       time.Time
+	this      *baseFile
+	files     []*baseFile
+	byPath    map[string]*baseFile
+	byName    map[string]*baseFile
+	formulas  map[string]node
+	backlinks map[*baseFile][]any
+	warnings  []string
 }
 
 func (q *baseQuery) warn(msg string) {
@@ -178,6 +179,22 @@ func (q *baseQuery) resolve(target string) *baseFile {
 		return f
 	}
 	return q.byName[strings.ToLower(path.Base(strings.TrimSuffix(t, ".md")))]
+}
+
+func (q *baseQuery) backlinksOf(f *baseFile) []any {
+	if q.backlinks == nil {
+		q.backlinks = map[*baseFile][]any{}
+		for _, g := range q.files {
+			seen := map[*baseFile]bool{}
+			for _, l := range append(append([]linkVal(nil), g.links...), g.embeds...) {
+				if t := q.resolve(l.target); t != nil && t != g && !seen[t] {
+					seen[t] = true
+					q.backlinks[t] = append(q.backlinks[t], linkVal{target: strings.TrimSuffix(g.path, ".md")})
+				}
+			}
+		}
+	}
+	return append([]any(nil), q.backlinks[f]...)
 }
 
 type baseSpec struct {
