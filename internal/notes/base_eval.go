@@ -100,7 +100,7 @@ func (sc *scope) eval(n node) (any, error) {
 			return nil, err
 		}
 		return sc.field(obj, x.name)
-	case index:
+	case subscript:
 		if id, ok := x.obj.(ident); ok && (id.name == "note" || id.name == "formula") {
 			k, err := sc.eval(x.key)
 			if err != nil {

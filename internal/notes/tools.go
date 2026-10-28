@@ -16,7 +16,7 @@ type readInput struct {
 }
 
 type searchInput struct {
-	Query string `json:"query" jsonschema:"case-insensitive substring to look for in note text and file names"`
+	Query string `json:"query" jsonschema:"words to find; all must occur in one section. \"exact phrase\", -word to exclude, a or b for alternatives"`
 	Under string `json:"under,omitempty" jsonschema:"directory to search in; omit for every readable note"`
 	Limit int    `json:"limit,omitempty" jsonschema:"at most this many matches, up to 50"`
 }
@@ -79,10 +79,12 @@ func (s *Service) Register(server *mcp.Server) {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name: "note_search",
-		Description: "Find notes by a case-insensitive substring of their text or file name. Returns path, " +
-			"line and the matching line. Only notes you may read are searched.",
-	}, func(_ context.Context, _ *mcp.CallToolRequest, in searchInput) (*mcp.CallToolResult, SearchResult, error) {
-		out, err := s.Search(in.Query, in.Under, in.Limit)
+		Description: "Full-text search over the notes you may read. Word forms match (Russian and English: " +
+			"подарки finds подарок), and the words may sit on different lines of one section. Returns sections " +
+			"ranked by relevance with their heading, line range and up to 3 matching lines, plus notes whose " +
+			"file name matches; read the note from start_line for the rest.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchInput) (*mcp.CallToolResult, SearchResult, error) {
+		out, err := s.Search(ctx, in.Query, in.Under, in.Limit)
 		return nil, out, err
 	})
 

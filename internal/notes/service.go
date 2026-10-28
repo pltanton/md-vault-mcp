@@ -10,9 +10,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"unicode/utf8"
 
 	"github.com/pltanton/md-vault-mcp/internal/access"
+	"github.com/pltanton/md-vault-mcp/internal/index"
 )
 
 const (
@@ -28,6 +28,7 @@ var errOwnerChanged = errors.New("changed or removed by the owner — it's his n
 type Service struct {
 	vault   *access.Vault
 	journal *journal
+	index   *index.Index
 	window  time.Duration
 	maxSize int64
 	now     func() time.Time
@@ -154,69 +155,6 @@ func (s *Service) Read(rel string, offset, limit int) (ReadResult, error) {
 		fmt.Fprintf(&b, "%d\t%s\n", i+1, lines[i])
 	}
 	return ReadResult{Path: clean, TotalLines: len(lines), Content: b.String()}, nil
-}
-
-type SearchMatch struct {
-	Path string `json:"path"`
-	Line int    `json:"line,omitempty" jsonschema:"1-based; absent when the file name matched"`
-	Text string `json:"text,omitempty"`
-}
-
-type SearchResult struct {
-	Matches   []SearchMatch `json:"matches"`
-	Truncated bool          `json:"truncated,omitempty"`
-}
-
-func (s *Service) Search(query, under string, limit int) (SearchResult, error) {
-	q := strings.ToLower(strings.TrimSpace(query))
-	if q == "" {
-		return SearchResult{}, errors.New("query must not be empty")
-	}
-	if limit <= 0 || limit > maxSearchResults {
-		limit = maxSearchResults
-	}
-	root, base, err := s.vault.ResolveDir(under)
-	if err != nil {
-		return SearchResult{}, err
-	}
-	out := SearchResult{Matches: []SearchMatch{}}
-	err = s.walk(root, base, func(rel, real string) bool {
-		name := strings.ToLower(strings.TrimSuffix(filepath.Base(rel), filepath.Ext(rel)))
-		if len(out.Matches) >= limit {
-			out.Truncated = true
-			return false
-		}
-		if strings.Contains(name, q) {
-			out.Matches = append(out.Matches, SearchMatch{Path: rel})
-		}
-		st, err := s.readFile(real, rel)
-		if err != nil {
-			return true
-		}
-		for i, line := range st.doc.lines {
-			if len(out.Matches) >= limit {
-				out.Truncated = true
-				return false
-			}
-			if strings.Contains(strings.ToLower(line), q) {
-				out.Matches = append(out.Matches, SearchMatch{Path: rel, Line: i + 1, Text: snippet(line)})
-			}
-		}
-		if len(out.Matches) >= limit {
-			out.Truncated = true
-			return false
-		}
-		return true
-	})
-	return out, err
-}
-
-func snippet(line string) string {
-	line = strings.TrimSpace(line)
-	if utf8.RuneCountInString(line) > maxSnippetRunes {
-		return string([]rune(line)[:maxSnippetRunes]) + "…"
-	}
-	return line
 }
 
 func (s *Service) walk(root, base string, visit func(rel, real string) bool) error {

@@ -36,6 +36,7 @@ type fixture struct {
 	state string
 	svc   *Service
 	clock time.Time
+	dbURL string
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -105,29 +106,8 @@ func TestReadNumbersLines(t *testing.T) {
 	}
 }
 
-func TestSearchAndListShowOnlyReadable(t *testing.T) {
+func TestListShowsOnlyReadable(t *testing.T) {
 	f := newFixture(t)
-	out, err := f.svc.Search("ПОДАР", "", 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var paths []string
-	for _, m := range out.Matches {
-		paths = append(paths, m.Path)
-	}
-	if got := strings.Join(paths, "|"); got != julia+"|Tasks.md" {
-		t.Errorf("search hit %s", got)
-	}
-
-	out, _ = f.svc.Search("alice", "", 0)
-	if len(out.Matches) == 0 || out.Matches[0].Path != julia || out.Matches[0].Line != 0 {
-		t.Errorf("file name match: %+v", out.Matches)
-	}
-
-	if _, err := f.svc.Search("x", "02. Areas/Work", 0); err == nil {
-		t.Error("search under a denied dir")
-	}
-
 	root, err := f.svc.List("")
 	if err != nil {
 		t.Fatal(err)

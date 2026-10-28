@@ -163,8 +163,8 @@ type (
 		obj  node
 		name string
 	}
-	index struct{ obj, key node }
-	call  struct {
+	subscript struct{ obj, key node }
+	call      struct {
 		fn   node
 		args []node
 	}
@@ -292,7 +292,7 @@ func (p *parser) postfix() (node, error) {
 			if err := p.expect("]"); err != nil {
 				return nil, err
 			}
-			n = index{obj: n, key: k}
+			n = subscript{obj: n, key: k}
 		case p.isOp("("):
 			p.i++
 			var args []node
