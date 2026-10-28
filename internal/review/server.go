@@ -21,6 +21,7 @@ type Queue interface {
 	ListProposals(ctx context.Context) (pending, decided []index.Proposal, err error)
 	GetProposal(ctx context.Context, id string) (index.Proposal, bool, error)
 	PreviewProposal(p index.Proposal) []notes.EditPreview
+	ProposalNote(p index.Proposal) (string, bool)
 	ApplyProposal(ctx context.Context, id, by, comment string) (index.Proposal, error)
 	RejectProposal(ctx context.Context, id, by, comment string) (index.Proposal, error)
 }

@@ -250,3 +250,15 @@ func (s *Service) rewriteLinks(rel string, edits []Edit) error {
 	}
 	return s.writeFile(real, clean, st.info, withText(st.doc, text))
 }
+
+func (s *Service) ProposalNote(p index.Proposal) (string, bool) {
+	real, clean, err := s.vault.ResolveRead(p.Path)
+	if err != nil {
+		return "", false
+	}
+	st, err := s.readFile(real, clean)
+	if err != nil {
+		return "", false
+	}
+	return docText(st.doc), true
+}

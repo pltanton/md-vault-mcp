@@ -15,6 +15,7 @@ import (
 )
 
 type fakeQueue struct {
+	others            map[string]index.Proposal
 	p                 index.Proposal
 	applied, rejected string
 	by, comment       string
@@ -25,7 +26,14 @@ func (q *fakeQueue) ListProposals(context.Context) ([]index.Proposal, []index.Pr
 }
 
 func (q *fakeQueue) GetProposal(_ context.Context, id string) (index.Proposal, bool, error) {
+	if p, ok := q.others[id]; ok {
+		return p, true, nil
+	}
 	return q.p, id == q.p.ID, nil
+}
+
+func (q *fakeQueue) ProposalNote(index.Proposal) (string, bool) {
+	return "# Старое\nтекст", true
 }
 
 func (q *fakeQueue) PreviewProposal(index.Proposal) []notes.EditPreview {
@@ -223,5 +231,28 @@ func TestLogout(t *testing.T) {
 	b.do("POST", "/logout", url.Values{"csrf": {m[1]}})
 	if res, _ := b.do("GET", "/", nil); res.StatusCode != http.StatusSeeOther {
 		t.Errorf("still signed in: %d", res.StatusCode)
+	}
+}
+
+func TestDeleteAndMovePages(t *testing.T) {
+	b, idp, q := setup(t)
+	q.others = map[string]index.Proposal{
+		"del": {ID: "del", Kind: "delete", Path: "Старое.md", Status: "pending", Reason: "дубль",
+			LinkEdits: []byte(`{"linked":["Tasks.md"]}`)},
+		"mv": {ID: "mv", Kind: "move", Path: "Старое.md", NewPath: "Архив/Старое.md", Status: "pending", Reason: "в архив",
+			LinkEdits: []byte(`{"notes":[{"path":"Tasks.md","edits":[{"old":"[[Старое]]","new":"[[Архив/Старое]]"}]}],"unwritable":["Work.md"]}`)},
+	}
+	b.login(idp, "/")
+	_, body := b.do("GET", "/p/del", nil)
+	for _, want := range []string{"Delete this note", "<li>Tasks.md</li>", "<h1>Старое</h1>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("delete page lacks %q\n%s", want, body)
+		}
+	}
+	_, body = b.do("GET", "/p/mv", nil)
+	for _, want := range []string{"Архив/Старое.md", "<del>[[Старое]]</del>", "<ins>[[Архив/Старое]]</ins>", "<li>Work.md</li>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("move page lacks %q\n%s", want, body)
+		}
 	}
 }

@@ -3,10 +3,24 @@
 <p class="muted">{{status .P.Status}} · proposed {{when .P.CreatedAt}}{{if .P.DecidedBy}} · {{.P.DecidedBy}}, {{when .P.DecidedAt}}{{end}}</p>
 {{if .Error}}<p class="error">Could not do it: {{.Error}}</p>{{end}}
 {{if .P.Comment}}<p class="note">Comment: {{.P.Comment}}</p>{{end}}
+{{if .Changes.Skipped}}<p class="stale">Links not rewritten in: {{range $i, $s := .Changes.Skipped}}{{if $i}}, {{end}}{{$s}}{{end}}</p>{{end}}
 {{if eq .P.Status "pending"}}
 <p class="note">Reason from the agent: {{.P.Reason}}</p>
 <form class="decide" method="post" action="/p/{{.P.ID}}/apply">
 <input type="hidden" name="csrf" value="{{.Viewer.CSRF}}">
+{{if eq .P.Kind "delete"}}
+<h2>Delete this note</h2>
+{{if .Changes.Linked}}<p class="stale">These notes link to it; their links will break:</p><ul>{{range .Changes.Linked}}<li>{{.}}</li>{{end}}</ul>{{else}}<p class="muted">No other note links to it.</p>{{end}}
+<details class="render" open><summary>Note text</summary><div class="md">{{.Note}}</div></details>
+{{end}}
+{{if eq .P.Kind "move"}}
+<h2>Move to <code>{{.P.NewPath}}</code></h2>
+{{if .Changes.Notes}}<p class="muted">Links rewritten in {{len .Changes.Notes}} notes:</p>
+{{range .Changes.Notes}}<div class="wd"><div class="l ctx">{{.Path}}</div>{{range .Edits}}<div class="l chg"><del>{{.Old}}</del> <ins>{{.New}}</ins></div>{{end}}</div>{{end}}
+{{else}}<p class="muted">No links to rewrite.</p>{{end}}
+{{if .Changes.Unwritable}}<p class="stale">Links in these notes will break; the agent may not change them:</p><ul>{{range .Changes.Unwritable}}<li>{{.}}</li>{{end}}</ul>{{end}}
+<details class="render"><summary>Note text</summary><div class="md">{{.Note}}</div></details>
+{{end}}
 {{range $i, $e := .Edits}}
 <section class="edit">
 <p class="muted">{{if $e.Stale}}<span class="stale">This text is no longer in the note, or occurs more than once; it cannot be applied</span>{{else}}Change {{add $i 1}} of {{len $.Edits}} · from line {{$e.Line}}{{end}}</p>

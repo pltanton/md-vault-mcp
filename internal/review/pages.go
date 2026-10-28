@@ -3,6 +3,7 @@ package review
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"errors"
 	"html/template"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pltanton/md-vault-mcp/internal/index"
+	"github.com/pltanton/md-vault-mcp/internal/notes"
 )
 
 //go:embed templates/*.html
@@ -55,11 +57,13 @@ type listPage struct {
 }
 
 type proposalPage struct {
-	Title  string
-	Viewer viewer
-	P      index.Proposal
-	Edits  []editView
-	Error  string
+	Title   string
+	Viewer  viewer
+	P       index.Proposal
+	Edits   []editView
+	Note    template.HTML
+	Changes notes.LinkChanges
+	Error   string
 }
 
 func (s *Server) render(w http.ResponseWriter, status int, name string, data any) {
@@ -106,7 +110,21 @@ func (s *Server) showProposal(w http.ResponseWriter, r *http.Request, v viewer, 
 			edits = append(edits, buildEdit(e))
 		}
 	}
-	s.render(w, status, "proposal.html", proposalPage{Title: p.Path, Viewer: v, P: p, Edits: edits, Error: errText})
+	var changes notes.LinkChanges
+	raw := p.LinkEdits
+	if p.Status != "pending" {
+		raw = p.Result
+	}
+	if len(raw) > 0 {
+		json.Unmarshal(raw, &changes)
+	}
+	var note template.HTML
+	if p.Status == "pending" && p.Kind != "edit" {
+		if text, ok := s.queue.ProposalNote(p); ok {
+			note = renderMarkdown(text)
+		}
+	}
+	s.render(w, status, "proposal.html", proposalPage{Title: p.Path, Viewer: v, P: p, Edits: edits, Note: note, Changes: changes, Error: errText})
 }
 
 func (s *Server) decide(apply bool) func(http.ResponseWriter, *http.Request, viewer) {

@@ -1,27 +1,8 @@
 {{template "head" .}}
 <h1>Waiting for a decision</h1>
-{{if .Pending}}
-<ul class="items">
-  {{range .Pending}}
-  <li>
-    <a href="/p/{{.ID}}">{{.Path}}</a
-    ><span class="muted">{{when .CreatedAt}}</span>
-  </li>
-  {{end}}
-</ul>
-{{else}}
-<p class="muted">Nothing is waiting.</p>
-{{end}} {{if .Decided}}
-<h2>Recently decided</h2>
-<ul class="items">
-  {{range .Decided}}
-  <li>
-    <a href="/p/{{.ID}}">{{.Path}}</a
-    ><span class="muted"
-      >{{status .Status}}{{if .DecidedBy}} · {{.DecidedBy}}{{end}} · {{when
-      .DecidedAt}}</span
-    >
-  </li>
-  {{end}}
-</ul>
-{{end}} {{template "foot" .}}
+{{if .Pending}}<ul class="items">{{range .Pending}}<li><span><a href="/p/{{.ID}}">{{.Path}}</a>{{template "kind" .}}</span><span class="muted">{{when .CreatedAt}}</span></li>{{end}}</ul>
+{{else}}<p class="muted">Nothing is waiting.</p>{{end}}
+{{if .Decided}}<h2>Recently decided</h2>
+<ul class="items">{{range .Decided}}<li><span><a href="/p/{{.ID}}">{{.Path}}</a>{{template "kind" .}}</span><span class="muted">{{status .Status}}{{if .DecidedBy}} · {{.DecidedBy}}{{end}} · {{when .DecidedAt}}</span></li>{{end}}</ul>{{end}}
+{{template "foot" .}}
+{{define "kind"}}{{if ne .Kind "edit"}}<span class="muted"> · {{.Kind}}{{if .NewPath}} → {{.NewPath}}{{end}}</span>{{end}}{{end}}
