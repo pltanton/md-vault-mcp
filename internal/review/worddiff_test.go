@@ -63,23 +63,29 @@ func TestCollapse(t *testing.T) {
 		t.Errorf("got %s", got)
 	}
 	short := shape(diffBlocks("a\nb\nc", "a\nB\nc"))
-	if short != ". * ." {
+	if short != ". * * ." {
 		t.Errorf("short: %s", short)
 	}
 }
 
-func TestBuildEditEscapesAndRenders(t *testing.T) {
-	v := buildEdit(notes.EditPreview{Line: 3, Old: []string{"<b>было</b>"}, New: []string{"**стало** <script>x</script>"}})
-	var html string
-	for _, b := range v.Blocks {
-		for _, l := range b.Lines {
-			html += string(l.HTML)
-		}
+func TestDiffLines(t *testing.T) {
+	var kinds []string
+	for _, l := range diffLines("a one\nb two\nc three", "a one\nb two too\nc three\nd new") {
+		kinds = append(kinds, l.Kind+":"+string(l.HTML))
 	}
-	if strings.Contains(html, "<b>") || strings.Contains(html, "<script>") || !strings.Contains(html, "&lt;script&gt;") {
-		t.Errorf("diff html not escaped: %s", html)
+	if got := strings.Join(kinds, " | "); got != "eq:a one | chg:b two<ins> too</ins> | eq:c three | add:d new" {
+		t.Errorf("got %s", got)
 	}
-	if !strings.Contains(string(v.Preview), "<strong>стало</strong>") || strings.Contains(string(v.Preview), "<script>") {
-		t.Errorf("preview: %s", v.Preview)
+}
+
+func TestBuildEdit(t *testing.T) {
+	small := buildEdit(notes.EditPreview{Old: []string{"- <b>был</b> текст тут"}, New: []string{"- <b>был</b> текст тут и там"}})
+	if small.Rewrite || len(small.Blocks) != 1 || !strings.Contains(string(small.Blocks[0].Lines[0].HTML), "&lt;b&gt;") {
+		t.Errorf("small edit %+v", small)
+	}
+	rewrite := buildEdit(notes.EditPreview{Old: []string{"Пиши ему, как человеку."}, New: []string{"**Совсем** другой <script>x</script>"}})
+	if !rewrite.Rewrite || rewrite.Blocks != nil || !strings.Contains(string(rewrite.Preview), "<strong>Совсем</strong>") ||
+		strings.Contains(string(rewrite.Preview), "<script>") || !strings.Contains(string(rewrite.OldPreview), "как человеку") {
+		t.Errorf("rewrite %+v", rewrite)
 	}
 }

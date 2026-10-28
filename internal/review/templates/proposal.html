@@ -10,13 +10,19 @@
 {{range $i, $e := .Edits}}
 <section class="edit">
 <p class="muted">{{if $e.Stale}}<span class="stale">This text is no longer in the note, or occurs more than once; it cannot be applied</span>{{else}}Change {{add $i 1}} of {{len $.Edits}} · from line {{$e.Line}}{{end}}</p>
+{{if $e.Rewrite}}
+<p class="muted">Rewritten; the new text:</p>
+<div class="md">{{$e.Preview}}</div>
+<details class="render"><summary>What was there before</summary><div class="md old">{{$e.OldPreview}}</div></details>
+{{else}}
 <div class="wd">
 {{range $e.Before}}<div class="l ctx">{{.}}</div>{{end}}
-{{if $e.Stale}}{{range $e.Old}}<div class="l chg"><del>{{.}}</del></div>{{end}}{{range $e.New}}<div class="l chg"><ins>{{.}}</ins></div>{{end}}{{end}}
-{{range $e.Blocks}}{{if .Hidden}}<details class="gap"><summary>{{len .Lines}} unchanged lines</summary>{{range .Lines}}<div class="l">{{.HTML}}</div>{{end}}</details>{{else}}{{range .Lines}}<div class="l{{if .Changed}} chg{{end}}">{{.HTML}}</div>{{end}}{{end}}{{end}}
+{{if $e.Stale}}{{range $e.Old}}<div class="l rm">{{.}}</div>{{end}}{{range $e.New}}<div class="l add">{{.}}</div>{{end}}{{end}}
+{{range $e.Blocks}}{{if .Hidden}}<details class="gap"><summary>{{len .Lines}} unchanged lines</summary>{{range .Lines}}<div class="l">{{.HTML}}</div>{{end}}</details>{{else}}{{range .Lines}}<div class="l {{.Kind}}">{{.HTML}}</div>{{end}}{{end}}{{end}}
 {{range $e.After}}<div class="l ctx">{{.}}</div>{{end}}
 </div>
 <details class="render"><summary>How the new text will look</summary><div class="md">{{$e.Preview}}</div></details>
+{{end}}
 </section>
 {{end}}
 <label class="muted" for="comment">Comment for the agent (optional)</label>

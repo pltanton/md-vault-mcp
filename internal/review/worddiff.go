@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/yuin/goldmark"
@@ -17,6 +18,8 @@ import (
 const (
 	contextLines = 1
 	tokenBase    = 0x10000
+	pairSimilar  = 0.5
+	rewriteBelow = 0.5
 )
 
 var (
@@ -30,9 +33,9 @@ var (
 type piece struct{ Kind, Text string }
 
 type line struct {
+	Kind    string
 	Changed bool
 	HTML    template.HTML
-	pieces  []piece
 }
 
 type block struct {
@@ -47,6 +50,8 @@ type editView struct {
 	Old, New      []string
 	Blocks        []block
 	Preview       template.HTML
+	Rewrite       bool
+	OldPreview    template.HTML
 }
 
 func wordDiff(a, b string) []piece {
@@ -86,41 +91,88 @@ func wordDiff(a, b string) []piece {
 	return out
 }
 
-func splitLines(pieces []piece) []line {
-	lines := []line{{}}
+func similarity(pieces []piece) float64 {
+	same, total := 0, 0
 	for _, p := range pieces {
-		for i, part := range strings.Split(p.Text, "\n") {
-			if i > 0 {
-				if p.Kind != "eq" {
-					lines[len(lines)-1].Changed = true
-				}
-				lines = append(lines, line{})
+		n := utf8.RuneCountInString(strings.TrimSpace(p.Text))
+		if p.Kind == "eq" {
+			same += 2 * n
+			total += 2 * n
+		} else {
+			total += n
+		}
+	}
+	if total == 0 {
+		return 1
+	}
+	return float64(same) / float64(total)
+}
+
+func piecesHTML(pieces []piece) template.HTML {
+	var b strings.Builder
+	for _, p := range pieces {
+		text := html.EscapeString(p.Text)
+		switch p.Kind {
+		case "del":
+			b.WriteString("<del>" + text + "</del>")
+		case "ins":
+			b.WriteString("<ins>" + text + "</ins>")
+		default:
+			b.WriteString(text)
+		}
+	}
+	return template.HTML(b.String())
+}
+
+func plainLine(kind, text string) line {
+	return line{Kind: kind, Changed: kind != "eq", HTML: template.HTML(html.EscapeString(text))}
+}
+
+func splitText(s string) []string {
+	return strings.Split(strings.TrimSuffix(s, "\n"), "\n")
+}
+
+func diffLines(a, b string) []line {
+	dmp := diffmatchpatch.New()
+	ra, rb, table := dmp.DiffLinesToRunes(a+"\n", b+"\n")
+	diffs := dmp.DiffCharsToLines(dmp.DiffMainRunes(ra, rb, false), table)
+	var removed, added []string
+	var lines []line
+	flush := func() {
+		paired := len(removed) > 0 && len(added) > 0
+		n := min(len(removed), len(added))
+		for i := 0; paired && i < n; i++ {
+			paired = similarity(wordDiff(removed[i], added[i])) >= pairSimilar
+		}
+		if paired {
+			for i := 0; i < n; i++ {
+				lines = append(lines, line{Kind: "chg", Changed: true, HTML: piecesHTML(wordDiff(removed[i], added[i]))})
 			}
-			if part == "" {
-				continue
-			}
-			cur := &lines[len(lines)-1]
-			cur.pieces = append(cur.pieces, piece{Kind: p.Kind, Text: part})
-			if p.Kind != "eq" {
-				cur.Changed = true
+			removed, added = removed[n:], added[n:]
+		}
+		for _, r := range removed {
+			lines = append(lines, plainLine("rm", r))
+		}
+		for _, a := range added {
+			lines = append(lines, plainLine("add", a))
+		}
+		removed, added = nil, nil
+	}
+	for _, d := range diffs {
+		text := splitText(d.Text)
+		switch d.Type {
+		case diffmatchpatch.DiffDelete:
+			removed = append(removed, text...)
+		case diffmatchpatch.DiffInsert:
+			added = append(added, text...)
+		default:
+			flush()
+			for _, t := range text {
+				lines = append(lines, plainLine("eq", t))
 			}
 		}
 	}
-	for i := range lines {
-		var b strings.Builder
-		for _, p := range lines[i].pieces {
-			text := html.EscapeString(p.Text)
-			switch p.Kind {
-			case "del":
-				b.WriteString("<del>" + text + "</del>")
-			case "ins":
-				b.WriteString("<ins>" + text + "</ins>")
-			default:
-				b.WriteString(text)
-			}
-		}
-		lines[i].HTML = template.HTML(b.String())
-	}
+	flush()
 	return lines
 }
 
@@ -165,7 +217,7 @@ func collapse(lines []line) []block {
 	return out
 }
 
-func diffBlocks(a, b string) []block { return collapse(splitLines(wordDiff(a, b))) }
+func diffBlocks(a, b string) []block { return collapse(diffLines(a, b)) }
 
 func renderMarkdown(src string) template.HTML {
 	var b bytes.Buffer
@@ -177,9 +229,16 @@ func renderMarkdown(src string) template.HTML {
 
 func buildEdit(e notes.EditPreview) editView {
 	v := editView{Line: e.Line, Stale: e.Stale, Before: e.Before, After: e.After, Old: e.Old, New: e.New}
-	if !e.Stale {
-		v.Blocks = diffBlocks(strings.Join(e.Old, "\n"), strings.Join(e.New, "\n"))
+	old, new := strings.Join(e.Old, "\n"), strings.Join(e.New, "\n")
+	v.Preview = renderMarkdown(new)
+	if e.Stale {
+		return v
 	}
-	v.Preview = renderMarkdown(strings.Join(e.New, "\n"))
+	if similarity(wordDiff(old, new)) < rewriteBelow {
+		v.Rewrite = true
+		v.OldPreview = renderMarkdown(old)
+		return v
+	}
+	v.Blocks = diffBlocks(old, new)
 	return v
 }
