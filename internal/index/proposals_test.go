@@ -22,10 +22,10 @@ func TestProposalLifecycle(t *testing.T) {
 	ix := open(t)
 	ctx := context.Background()
 	must(t, ix.CreateProposal(ctx, Proposal{ID: "p1", Kind: "edit", Path: "a.md",
-		Edits: json.RawMessage(`[{"old":"x","new":"y"}]`), Reason: "fix"}))
+		Edits: json.RawMessage(`[{"old":"x","new":"y"}]`), LinkEdits: json.RawMessage(`{"notes":[]}`), Reason: "fix"}))
 	got, ok, err := ix.Proposal(ctx, "p1")
 	must(t, err)
-	if !ok || got.Status != "pending" || got.Reason != "fix" || got.CreatedAt.IsZero() || !got.DecidedAt.IsZero() ||
+	if !ok || got.Status != "pending" || got.Reason != "fix" || got.LinkEdits == nil || got.CreatedAt.IsZero() || !got.DecidedAt.IsZero() ||
 		len(editsOf(t, got)) != 1 || editsOf(t, got)[0]["new"] != "y" {
 		t.Fatalf("got %+v", got)
 	}
@@ -34,7 +34,7 @@ func TestProposalLifecycle(t *testing.T) {
 	})
 	must(t, err)
 	if decided.Status != "applied" || decided.DecidedBy != "anton" || decided.Comment != "ок" ||
-		decided.Edits != nil || decided.Reason != "" || decided.DecidedAt.IsZero() {
+		decided.Edits != nil || decided.LinkEdits != nil || decided.Reason != "" || decided.DecidedAt.IsZero() {
 		t.Errorf("decided %+v", decided)
 	}
 	if _, err := ix.Decide(ctx, "p1", func(Proposal) (Decision, error) { return Decision{Status: "rejected"}, nil }); !errors.Is(err, ErrNotPending) {

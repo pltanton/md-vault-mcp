@@ -17,6 +17,7 @@ var (
 type Proposal struct {
 	ID, Kind, Path, NewPath, Status string
 	Edits                           json.RawMessage
+	LinkEdits                       json.RawMessage
 	Reason                          string
 	BaseHash                        string
 	Result                          json.RawMessage
@@ -31,16 +32,16 @@ type Decision struct {
 	Result              json.RawMessage
 }
 
-const proposalCols = `id, kind, path, coalesce(new_path, ''), status, edits, coalesce(reason, ''),
+const proposalCols = `id, kind, path, coalesce(new_path, ''), status, edits, link_edits, coalesce(reason, ''),
 	coalesce(base_hash, ''), result, created_at, decided_at, coalesce(decided_by, ''), coalesce(comment, '')`
 
 func scanProposal(row pgx.Row) (Proposal, error) {
 	var p Proposal
-	var edits, result []byte
+	var edits, linkEdits, result []byte
 	var decided *time.Time
-	err := row.Scan(&p.ID, &p.Kind, &p.Path, &p.NewPath, &p.Status, &edits, &p.Reason, &p.BaseHash,
+	err := row.Scan(&p.ID, &p.Kind, &p.Path, &p.NewPath, &p.Status, &edits, &linkEdits, &p.Reason, &p.BaseHash,
 		&result, &p.CreatedAt, &decided, &p.DecidedBy, &p.Comment)
-	p.Edits, p.Result = edits, result
+	p.Edits, p.LinkEdits, p.Result = edits, linkEdits, result
 	if decided != nil {
 		p.DecidedAt = *decided
 	}
@@ -55,9 +56,9 @@ func rawJSON(b json.RawMessage) any {
 }
 
 func (ix *Index) CreateProposal(ctx context.Context, p Proposal) error {
-	_, err := ix.pool.Exec(ctx, `INSERT INTO proposals (id, kind, path, new_path, status, edits, reason, base_hash)
-		VALUES ($1, $2, $3, nullif($4, ''), 'pending', $5::jsonb, $6, nullif($7, ''))`,
-		p.ID, p.Kind, p.Path, p.NewPath, rawJSON(p.Edits), p.Reason, p.BaseHash)
+	_, err := ix.pool.Exec(ctx, `INSERT INTO proposals (id, kind, path, new_path, status, edits, reason, base_hash, link_edits)
+		VALUES ($1, $2, $3, nullif($4, ''), 'pending', $5::jsonb, $6, nullif($7, ''), $8::jsonb)`,
+		p.ID, p.Kind, p.Path, p.NewPath, rawJSON(p.Edits), p.Reason, p.BaseHash, rawJSON(p.LinkEdits))
 	return err
 }
 
