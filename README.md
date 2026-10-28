@@ -18,8 +18,9 @@ handing it the whole folder.
   ones. It can change or remove only the blocks it wrote itself, only for a
   limited time (48 hours by default) and only while nobody else has touched
   them. The owner's own text is never rewritten.
-- **No copy of your notes.** The journal of what the agent wrote stores keyed
-  hashes and line counts, never text.
+- **No copy of your text.** The journal of what the agent wrote stores keyed
+  hashes and line counts; the search index stores lemmatized words, paths, line
+  ranges, sizes and modification times. Neither stores note text.
 - **stdio or streamable HTTP**, the latter behind a bearer token.
 
 It was written so that a personal agent whose tools run in a sandbox without
@@ -32,7 +33,7 @@ vault.
 | Tool                                 | What it does                                                                                                                                                                                        |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `note_read(path, offset?, limit?)`   | Note content with line numbers.                                                                                                                                                                     |
-| `note_search(query, under?, limit?)` | Case-insensitive substring search over text and file names; path, line and the matching line.                                                                                                       |
+| `note_search(query, under?, limit?)` | Full-text search: Russian and English word forms match, words may sit on different lines of one section. Sections ranked by relevance with heading, line range and up to 3 matching lines; notes whose file name matches. `"phrase"`, `-word`, `a or b`. |
 | `note_list(dir?)`                    | Readable notes and the subdirectories that contain some.                                                                                                                                            |
 | `note_add(path, text, heading?)`     | Append lines to an existing note: at the end of the section under `heading` (the heading line as written, e.g. `## Gift ideas`, or just its text), or at the end of the note. Returns a block `id`. |
 | `note_create(path, text)`            | Create a note; fails if it exists. The whole note is one block.                                                                                                                                     |
@@ -70,6 +71,21 @@ comments and quoting stay as written. Lists are written as block sequences and
 dates unquoted, the way Obsidian writes them. Unlike blocks, any property in a
 writable note may be changed; the undo works within the edit window while the
 key still reads as the agent left it.
+
+### Search
+
+The index lives in Postgres (`database_url`). A note is cut into sections at
+every heading (and at the front matter); a section longer than 40 lines is cut
+into 40-line pieces. Russian words are lemmatized with the hunspell `ru_RU`
+dictionary (`подарки` → `подарок`, `дня` → `день`), falling back to the Snowball
+stemmer for words it lacks; English words use the Snowball stemmer. `ё` counts as
+`е`. At startup the server reindexes notes whose size or modification time
+changed and drops those that are gone or no longer readable, then follows
+changes with inotify; its own writes are reindexed before the tool returns.
+Headings and matching lines are read from the files when a search runs.
+
+The dictionary must be in Postgres' `tsearch_data` directory: the flake builds it
+as `packages.<system>.hunspell-ru`, and the NixOS module installs it.
 
 ### How the agent's blocks are tracked
 
@@ -127,6 +143,7 @@ See [`md-vault-mcp.example.toml`](md-vault-mcp.example.toml).
 | ----------------- | --------- | --------------------------------------------------- |
 | `vault`           | —         | Vault directory.                                    |
 | `state_dir`       | —         | Where the journal and its key live.                 |
+| `database_url`    | —         | Postgres connection string; the role must own the database (migrations create a text search configuration). |
 | `edit_window`     | `48h`     | Go duration.                                        |
 | `max_file_size`   | `1048576` | Bytes; larger notes are neither read nor written.   |
 | `extensions`      | `[".md"]` |                                                     |
@@ -195,6 +212,14 @@ be root-only), and the journal lives in `/var/lib/<stateDirectory>`, by default
 `/var/lib/md-vault-mcp-<name>`. Give each instance its own token: a client
 holding one cannot reach the other vault.
 
+By default each instance gets a local Postgres database and role
+`md_vault_mcp_<name>` (dashes become underscores), reached over the unix socket
+with peer authentication mapped from the instance's `user`, so no password
+exists and one instance cannot open another's database. The module enables
+`services.postgresql` and adds the dictionary to its extensions, which restarts
+Postgres on the first deploy. To use another server, set
+`database.createLocally = false` and `database.url`.
+
 ## Security model
 
 The server trusts its configuration and the token holder within the rules: it
@@ -209,6 +234,9 @@ modification-time check. Keep the HTTP listener on loopback or behind TLS.
 nix develop
 go test ./...
 ```
+
+The dev shell has Postgres with the dictionary; the tests start a throwaway
+cluster with `initdb` and skip the database tests when it is not on `PATH`.
 
 ## License
 
