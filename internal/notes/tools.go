@@ -66,6 +66,17 @@ type recentInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"at most this many blocks, up to 20"`
 }
 
+type proposeInput struct {
+	Path   string `json:"path" jsonschema:"note to change"`
+	Edits  []Edit `json:"edits" jsonschema:"replacements; each old must occur exactly once in the note and edits must not overlap"`
+	Reason string `json:"reason" jsonschema:"why, for the person who reviews it, in one or two sentences"`
+}
+
+type proposalsInput struct {
+	Status string `json:"status,omitempty" jsonschema:"pending, applied, rejected, stale or expired; omit for all"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"at most this many, up to 50"`
+}
+
 func (s *Service) Register(server *mcp.Server) {
 	window := s.window.String()
 
@@ -176,6 +187,30 @@ func (s *Service) Register(server *mcp.Server) {
 			"first, with their current text. Use it to find \"what you just added\".",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, in recentInput) (*mcp.CallToolResult, RecentResult, error) {
 		out, err := s.Recent(in.Limit)
+		return nil, out, err
+	})
+
+	if s.reviewURL == "" {
+		return
+	}
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "note_propose",
+		Description: "Propose changing text you may not change directly (the owner's text, or yours after " + window +
+			") in a note you may write. Each edit replaces one exact piece of text that occurs exactly once. A person " +
+			"applies or rejects it on a web page: give them the returned url. If every edit is inside blocks you may " +
+			"still change, it is applied at once instead. See the outcome with note_proposals.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in proposeInput) (*mcp.CallToolResult, ProposeResult, error) {
+		out, err := s.Propose(ctx, in.Path, in.Edits, in.Reason)
+		return nil, out, err
+	})
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "note_proposals",
+		Description: "Your proposals, newest first, with their status and the reviewer's comment. A stale one could " +
+			"not be applied because the text changed since; read the note and propose again.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in proposalsInput) (*mcp.CallToolResult, ProposalsResult, error) {
+		out, err := s.Proposals(ctx, in.Status, in.Limit)
 		return nil, out, err
 	})
 }

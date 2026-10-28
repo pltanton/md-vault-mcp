@@ -26,12 +26,13 @@ const (
 var errOwnerChanged = errors.New("changed or removed by the owner — it's his now; leave it as it is")
 
 type Service struct {
-	vault   *access.Vault
-	journal *journal
-	index   *index.Index
-	window  time.Duration
-	maxSize int64
-	now     func() time.Time
+	vault     *access.Vault
+	journal   *journal
+	index     *index.Index
+	reviewURL string
+	window    time.Duration
+	maxSize   int64
+	now       func() time.Time
 }
 
 func NewService(cfg Config) (*Service, error) {
