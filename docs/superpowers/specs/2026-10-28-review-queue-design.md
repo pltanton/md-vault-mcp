@@ -36,6 +36,10 @@ rejects in a web UI, signed in through Kanidm.
   check.
 - Deleting and moving notes go through review too. A move rewrites the links
   to the note in the same proposal, found through a links index.
+- Amended for plan B: there is no `links` table. Backlinks are found by walking
+  the readable notes when a move or delete is proposed (milliseconds for a
+  vault of this size, and never stale), and `file.backlinks` is computed from
+  the notes `base_query` already loads. The `links` DDL below is not created.
 - Work is split into two plans: A — edit proposals, UI, login, NixOS; B — links
   index, `file.backlinks`, delete and move proposals.
 
