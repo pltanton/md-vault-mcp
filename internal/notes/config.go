@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Vault       string
 	StateDir    string
+	DatabaseURL string
 	EditWindow  time.Duration
 	MaxFileSize int64
 	Extensions  []string
@@ -26,6 +27,7 @@ type Config struct {
 type fileConfig struct {
 	Vault       string         `toml:"vault"`
 	StateDir    string         `toml:"state_dir"`
+	DatabaseURL string         `toml:"database_url"`
 	EditWindow  string         `toml:"edit_window"`
 	MaxFileSize int64          `toml:"max_file_size"`
 	Extensions  []string       `toml:"extensions"`
@@ -54,6 +56,7 @@ func LoadConfig(path string) (Config, error) {
 	cfg := Config{
 		Vault:       fc.Vault,
 		StateDir:    fc.StateDir,
+		DatabaseURL: fc.DatabaseURL,
 		MaxFileSize: fc.MaxFileSize,
 		Extensions:  fc.Extensions,
 		Read:        fc.Read,
@@ -72,6 +75,9 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.StateDir == "" {
 		return Config{}, fmt.Errorf("config: state_dir is required")
+	}
+	if cfg.DatabaseURL == "" {
+		return Config{}, fmt.Errorf("config: database_url is required")
 	}
 	return cfg, nil
 }

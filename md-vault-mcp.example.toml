@@ -1,5 +1,6 @@
 vault = "/home/me/Obsidian/Vault"
 state_dir = "/home/me/.local/state/md-vault-mcp"
+database_url = "host=/run/postgresql dbname=md_vault_mcp"
 edit_window = "48h"
 max_file_size = 1048576
 extensions = [".md"]

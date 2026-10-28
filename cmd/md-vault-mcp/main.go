@@ -15,6 +15,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/pltanton/md-vault-mcp/internal/index"
 	"github.com/pltanton/md-vault-mcp/internal/notes"
 )
 
@@ -59,15 +60,26 @@ func run(configPath, transport, listen, tokenFile string) error {
 		cfg.TokenFile = tokenFile
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	svc, err := notes.NewService(cfg)
 	if err != nil {
 		return err
 	}
+	ix, err := index.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer ix.Close()
+	if err := svc.UseIndex(ctx, ix); err != nil {
+		return fmt.Errorf("index: %w", err)
+	}
+	if err := svc.Watch(ctx); err != nil {
+		return fmt.Errorf("watch: %w", err)
+	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "md-vault", Version: version}, nil)
 	svc.Register(server)
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	switch cfg.Transport {
 	case "", "stdio":
