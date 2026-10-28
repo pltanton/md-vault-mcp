@@ -12,13 +12,20 @@
   in {
     packages = forAllSystems (pkgs: rec {
       md-vault-mcp = pkgs.callPackage ./nix/package.nix {};
+      hunspell-ru = pkgs.callPackage ./nix/hunspell-ru.nix {};
       default = md-vault-mcp;
     });
 
     nixosModules.default = import ./nix/module.nix;
 
     devShells = forAllSystems (pkgs: {
-      default = pkgs.mkShell {packages = [pkgs.go pkgs.gopls];};
+      default = pkgs.mkShell {
+        packages = [
+          pkgs.go
+          pkgs.gopls
+          (pkgs.postgresql.withPackages (_: [(pkgs.callPackage ./nix/hunspell-ru.nix {})]))
+        ];
+      };
     });
   };
 }
