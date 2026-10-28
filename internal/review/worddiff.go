@@ -234,11 +234,10 @@ func buildEdit(e notes.EditPreview) editView {
 	if e.Stale {
 		return v
 	}
+	v.Blocks = diffBlocks(old, new)
 	if similarity(wordDiff(old, new)) < rewriteBelow {
 		v.Rewrite = true
 		v.OldPreview = renderMarkdown(old)
-		return v
 	}
-	v.Blocks = diffBlocks(old, new)
 	return v
 }

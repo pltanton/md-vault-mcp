@@ -84,7 +84,7 @@ func TestBuildEdit(t *testing.T) {
 		t.Errorf("small edit %+v", small)
 	}
 	rewrite := buildEdit(notes.EditPreview{Old: []string{"Пиши ему, как человеку."}, New: []string{"**Совсем** другой <script>x</script>"}})
-	if !rewrite.Rewrite || rewrite.Blocks != nil || !strings.Contains(string(rewrite.Preview), "<strong>Совсем</strong>") ||
+	if !rewrite.Rewrite || rewrite.Blocks == nil || !strings.Contains(string(rewrite.Preview), "<strong>Совсем</strong>") ||
 		strings.Contains(string(rewrite.Preview), "<script>") || !strings.Contains(string(rewrite.OldPreview), "как человеку") {
 		t.Errorf("rewrite %+v", rewrite)
 	}

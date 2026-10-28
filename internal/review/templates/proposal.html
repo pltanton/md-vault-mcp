@@ -13,12 +13,13 @@
 {{if $e.Rewrite}}
 <p class="muted">Rewritten; the new text:</p>
 <div class="md">{{$e.Preview}}</div>
+<details class="render"><summary>Show changes</summary><div class="wd">{{template "diff" $e}}</div></details>
 <details class="render"><summary>What was there before</summary><div class="md old">{{$e.OldPreview}}</div></details>
 {{else}}
 <div class="wd">
 {{range $e.Before}}<div class="l ctx">{{.}}</div>{{end}}
 {{if $e.Stale}}{{range $e.Old}}<div class="l rm">{{.}}</div>{{end}}{{range $e.New}}<div class="l add">{{.}}</div>{{end}}{{end}}
-{{range $e.Blocks}}{{if .Hidden}}<details class="gap"><summary>{{len .Lines}} unchanged lines</summary>{{range .Lines}}<div class="l">{{.HTML}}</div>{{end}}</details>{{else}}{{range .Lines}}<div class="l {{.Kind}}">{{.HTML}}</div>{{end}}{{end}}{{end}}
+{{template "diff" $e}}
 {{range $e.After}}<div class="l ctx">{{.}}</div>{{end}}
 </div>
 <details class="render"><summary>How the new text will look</summary><div class="md">{{$e.Preview}}</div></details>
@@ -31,3 +32,4 @@
 </form>
 {{end}}
 {{template "foot" .}}
+{{define "diff"}}{{range .Blocks}}{{if .Hidden}}<details class="gap"><summary>{{len .Lines}} unchanged lines</summary>{{range .Lines}}<div class="l">{{.HTML}}</div>{{end}}</details>{{else}}{{range .Lines}}<div class="l {{.Kind}}">{{.HTML}}</div>{{end}}{{end}}{{end}}{{end}}
