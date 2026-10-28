@@ -17,7 +17,7 @@ import (
 var templates embed.FS
 
 var statusNames = map[string]string{
-	"pending": "ждёт", "applied": "применено", "rejected": "отклонено", "stale": "устарело", "expired": "истекло",
+	"pending": "pending", "applied": "applied", "rejected": "rejected", "stale": "stale", "expired": "expired",
 }
 
 func parsePages() *template.Template {
@@ -32,7 +32,7 @@ func parsePages() *template.Template {
 			if t.IsZero() {
 				return ""
 			}
-			return t.Local().Format("02.01.2006 15:04")
+			return t.Local().Format("2006-01-02 15:04")
 		},
 	}).ParseFS(templates, "templates/*.html"))
 }
@@ -80,10 +80,10 @@ func (s *Server) message(w http.ResponseWriter, status int, v viewer, title, tex
 func (s *Server) list(w http.ResponseWriter, r *http.Request, v viewer) {
 	pending, decided, err := s.queue.ListProposals(r.Context())
 	if err != nil {
-		s.message(w, http.StatusInternalServerError, v, "Ошибка", err.Error())
+		s.message(w, http.StatusInternalServerError, v, "Something went wrong", err.Error())
 		return
 	}
-	s.render(w, http.StatusOK, "list.html", listPage{Title: "Правки агента", Viewer: v, Pending: pending, Decided: decided})
+	s.render(w, http.StatusOK, "list.html", listPage{Title: "Agent proposals", Viewer: v, Pending: pending, Decided: decided})
 }
 
 func (s *Server) show(w http.ResponseWriter, r *http.Request, v viewer) {
@@ -93,11 +93,11 @@ func (s *Server) show(w http.ResponseWriter, r *http.Request, v viewer) {
 func (s *Server) showProposal(w http.ResponseWriter, r *http.Request, v viewer, status int, errText string) {
 	p, ok, err := s.queue.GetProposal(r.Context(), r.PathValue("id"))
 	if err != nil {
-		s.message(w, http.StatusInternalServerError, v, "Ошибка", err.Error())
+		s.message(w, http.StatusInternalServerError, v, "Something went wrong", err.Error())
 		return
 	}
 	if !ok {
-		s.message(w, http.StatusNotFound, v, "Такой правки нет", "Возможно, ссылка неполная.")
+		s.message(w, http.StatusNotFound, v, "No such proposal", "The link may be incomplete.")
 		return
 	}
 	var edits []notes.EditPreview

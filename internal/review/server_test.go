@@ -190,7 +190,7 @@ func TestReviewAndApply(t *testing.T) {
 	if res.StatusCode != http.StatusSeeOther || res.Header.Get("Location") != "/p/p1" || q.applied != "p1" || q.by != "anton" || q.comment != "ок" {
 		t.Errorf("apply %d %s %+v", res.StatusCode, res.Header.Get("Location"), q)
 	}
-	if res, body := b.do("GET", "/p/p1", nil); !strings.Contains(body, "применено") || strings.Contains(body, `name="comment"`) {
+	if res, body := b.do("GET", "/p/p1", nil); !strings.Contains(body, "applied") || strings.Contains(body, `name="comment"`) {
 		t.Errorf("decided page %d\n%s", res.StatusCode, body)
 	}
 }

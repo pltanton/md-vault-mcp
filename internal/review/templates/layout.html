@@ -1,5 +1,5 @@
 {{define "head"}}<!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -184,12 +184,12 @@
   </head>
   <body>
     <header>
-      <a href="/">Правки агента</a>{{if .Viewer.User}}
+      <a href="/">Agent proposals</a>{{if .Viewer.User}}
       <form class="inline" method="post" action="/logout">
         <input type="hidden" name="csrf" value="{{.Viewer.CSRF}}" /><span
           class="muted"
           >{{.Viewer.User}}</span
-        ><button type="submit">Выйти</button>
+        ><button type="submit">Sign out</button>
       </form>
       {{end}}
     </header>

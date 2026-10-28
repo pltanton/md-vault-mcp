@@ -1,21 +1,20 @@
 {{template "head" .}}
 <h1>{{.P.Path}}</h1>
 <p class="muted">
-  {{status .P.Status}} · предложено {{when .P.CreatedAt}}{{if .P.DecidedBy}} ·
+  {{status .P.Status}} · proposed {{when .P.CreatedAt}}{{if .P.DecidedBy}} ·
   {{.P.DecidedBy}}, {{when .P.DecidedAt}}{{end}}
 </p>
 {{if .Error}}
-<p class="error">Не получилось: {{.Error}}</p>
+<p class="error">Could not do it: {{.Error}}</p>
 {{end}} {{if .P.Comment}}
-<p class="note">Комментарий: {{.P.Comment}}</p>
+<p class="note">Comment: {{.P.Comment}}</p>
 {{end}} {{if eq .P.Status "pending"}}
-<p class="note">Причина от агента: {{.P.Reason}}</p>
+<p class="note">Reason from the agent: {{.P.Reason}}</p>
 {{range .Edits}}
 <div class="diff">
   {{if .Stale}}
   <div class="stale">
-    Этого текста в заметке уже нет или он встречается несколько раз — применить
-    не выйдет
+    This text is no longer in the note, or occurs more than once; it cannot be applied
   </div>
   {{end}} {{range .Before}}
   <div class="ctx">{{.}}</div>
@@ -28,17 +27,17 @@
   {{end}}
 </div>
 {{if not .Stale}}
-<p class="muted">со строки {{.Line}}</p>
+<p class="muted">from line {{.Line}}</p>
 {{end}} {{end}}
 <form class="decide" method="post" action="/p/{{.P.ID}}/apply">
   <input type="hidden" name="csrf" value="{{.Viewer.CSRF}}" />
   <label class="muted" for="comment"
-    >Комментарий для агента (необязательно)</label
+    >Comment for the agent (optional)</label
   >
   <textarea id="comment" name="comment"></textarea>
   <div class="buttons">
-    <button class="primary" type="submit">Применить</button
-    ><button type="submit" formaction="/p/{{.P.ID}}/reject">Отклонить</button>
+    <button class="primary" type="submit">Apply</button
+    ><button type="submit" formaction="/p/{{.P.ID}}/reject">Reject</button>
   </div>
 </form>
 {{end}} {{template "foot" .}}

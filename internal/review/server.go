@@ -101,7 +101,7 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, viewer)) htt
 		}
 		if !ok {
 			if r.Method != http.MethodGet {
-				s.message(w, http.StatusForbidden, viewer{}, "Сессия закончилась", "Войди заново и повтори.")
+				s.message(w, http.StatusForbidden, viewer{}, "Session expired", "Sign in again and retry.")
 				return
 			}
 			http.Redirect(w, r, "/login?next="+url.QueryEscape(r.URL.Path), http.StatusSeeOther)
@@ -109,7 +109,7 @@ func (s *Server) auth(next func(http.ResponseWriter, *http.Request, viewer)) htt
 		}
 		v := viewer{User: sess.User, CSRF: s.csrfToken(raw)}
 		if r.Method == http.MethodPost && !hmac.Equal([]byte(r.PostFormValue("csrf")), []byte(v.CSRF)) {
-			s.message(w, http.StatusForbidden, v, "Форма устарела", "Обнови страницу и повтори.")
+			s.message(w, http.StatusForbidden, v, "The form expired", "Reload the page and retry.")
 			return
 		}
 		next(w, r, v)

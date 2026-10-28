@@ -1,5 +1,5 @@
 {{template "head" .}}
-<h1>Ждут решения</h1>
+<h1>Waiting for a decision</h1>
 {{if .Pending}}
 <ul class="items">
   {{range .Pending}}
@@ -10,9 +10,9 @@
   {{end}}
 </ul>
 {{else}}
-<p class="muted">Ничего не ждёт.</p>
+<p class="muted">Nothing is waiting.</p>
 {{end}} {{if .Decided}}
-<h2>Недавно решённые</h2>
+<h2>Recently decided</h2>
 <ul class="items">
   {{range .Decided}}
   <li>
