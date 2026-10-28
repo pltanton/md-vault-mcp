@@ -1,2 +1,27 @@
 {{template "head" .}}
-{{template "foot" .}}
+<h1>Ждут решения</h1>
+{{if .Pending}}
+<ul class="items">
+  {{range .Pending}}
+  <li>
+    <a href="/p/{{.ID}}">{{.Path}}</a
+    ><span class="muted">{{when .CreatedAt}}</span>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p class="muted">Ничего не ждёт.</p>
+{{end}} {{if .Decided}}
+<h2>Недавно решённые</h2>
+<ul class="items">
+  {{range .Decided}}
+  <li>
+    <a href="/p/{{.ID}}">{{.Path}}</a
+    ><span class="muted"
+      >{{status .Status}}{{if .DecidedBy}} · {{.DecidedBy}}{{end}} · {{when
+      .DecidedAt}}</span
+    >
+  </li>
+  {{end}}
+</ul>
+{{end}} {{template "foot" .}}

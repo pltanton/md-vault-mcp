@@ -1,2 +1,44 @@
 {{template "head" .}}
-{{template "foot" .}}
+<h1>{{.P.Path}}</h1>
+<p class="muted">
+  {{status .P.Status}} · предложено {{when .P.CreatedAt}}{{if .P.DecidedBy}} ·
+  {{.P.DecidedBy}}, {{when .P.DecidedAt}}{{end}}
+</p>
+{{if .Error}}
+<p class="error">Не получилось: {{.Error}}</p>
+{{end}} {{if .P.Comment}}
+<p class="note">Комментарий: {{.P.Comment}}</p>
+{{end}} {{if eq .P.Status "pending"}}
+<p class="note">Причина от агента: {{.P.Reason}}</p>
+{{range .Edits}}
+<div class="diff">
+  {{if .Stale}}
+  <div class="stale">
+    Этого текста в заметке уже нет или он встречается несколько раз — применить
+    не выйдет
+  </div>
+  {{end}} {{range .Before}}
+  <div class="ctx">{{.}}</div>
+  {{end}} {{range .Old}}
+  <div class="del">- {{.}}</div>
+  {{end}} {{range .New}}
+  <div class="add">+ {{.}}</div>
+  {{end}} {{range .After}}
+  <div class="ctx">{{.}}</div>
+  {{end}}
+</div>
+{{if not .Stale}}
+<p class="muted">со строки {{.Line}}</p>
+{{end}} {{end}}
+<form class="decide" method="post" action="/p/{{.P.ID}}/apply">
+  <input type="hidden" name="csrf" value="{{.Viewer.CSRF}}" />
+  <label class="muted" for="comment"
+    >Комментарий для агента (необязательно)</label
+  >
+  <textarea id="comment" name="comment"></textarea>
+  <div class="buttons">
+    <button class="primary" type="submit">Применить</button
+    ><button type="submit" formaction="/p/{{.P.ID}}/reject">Отклонить</button>
+  </div>
+</form>
+{{end}} {{template "foot" .}}

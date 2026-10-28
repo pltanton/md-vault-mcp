@@ -167,3 +167,61 @@ func TestLoginWithoutProvider(t *testing.T) {
 }
 
 var csrfField = regexp.MustCompile(`name="csrf" value="([^"]+)"`)
+
+func TestReviewAndApply(t *testing.T) {
+	b, idp, q := setup(t)
+	b.login(idp, "/")
+	res, body := b.do("GET", "/", nil)
+	if res.StatusCode != http.StatusOK || !strings.Contains(body, `href="/p/p1"`) || !strings.Contains(body, "Дни рождения.md") {
+		t.Fatalf("list %d\n%s", res.StatusCode, body)
+	}
+	res, body = b.do("GET", "/p/p1", nil)
+	if res.StatusCode != http.StatusOK || !strings.Contains(body, "- ДР: 21 марта") || !strings.Contains(body, "в чате сказали 21-е") {
+		t.Fatalf("proposal %d\n%s", res.StatusCode, body)
+	}
+	m := csrfField.FindStringSubmatch(body)
+	if m == nil {
+		t.Fatal("no csrf field")
+	}
+	if res, _ := b.do("POST", "/p/p1/apply", url.Values{"comment": {"ок"}}); res.StatusCode != http.StatusForbidden || q.applied != "" {
+		t.Errorf("apply without csrf: %d", res.StatusCode)
+	}
+	res, _ = b.do("POST", "/p/p1/apply", url.Values{"csrf": {m[1]}, "comment": {" ок "}})
+	if res.StatusCode != http.StatusSeeOther || res.Header.Get("Location") != "/p/p1" || q.applied != "p1" || q.by != "anton" || q.comment != "ок" {
+		t.Errorf("apply %d %s %+v", res.StatusCode, res.Header.Get("Location"), q)
+	}
+	if res, body := b.do("GET", "/p/p1", nil); !strings.Contains(body, "применено") || strings.Contains(body, `name="comment"`) {
+		t.Errorf("decided page %d\n%s", res.StatusCode, body)
+	}
+}
+
+func TestReject(t *testing.T) {
+	b, idp, q := setup(t)
+	idp.user, idp.groups = "julsa", []string{"family"}
+	b.login(idp, "/")
+	_, body := b.do("GET", "/p/p1", nil)
+	m := csrfField.FindStringSubmatch(body)
+	b.do("POST", "/p/p1/reject", url.Values{"csrf": {m[1]}, "comment": {"не надо"}})
+	if q.rejected != "p1" || q.by != "julsa" || q.comment != "не надо" {
+		t.Errorf("got %+v", q)
+	}
+}
+
+func TestUnknownProposal(t *testing.T) {
+	b, idp, _ := setup(t)
+	b.login(idp, "/")
+	if res, _ := b.do("GET", "/p/nope", nil); res.StatusCode != http.StatusNotFound {
+		t.Errorf("got %d", res.StatusCode)
+	}
+}
+
+func TestLogout(t *testing.T) {
+	b, idp, _ := setup(t)
+	b.login(idp, "/")
+	_, body := b.do("GET", "/", nil)
+	m := csrfField.FindStringSubmatch(body)
+	b.do("POST", "/logout", url.Values{"csrf": {m[1]}})
+	if res, _ := b.do("GET", "/", nil); res.StatusCode != http.StatusSeeOther {
+		t.Errorf("still signed in: %d", res.StatusCode)
+	}
+}
