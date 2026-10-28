@@ -22,6 +22,16 @@ type Config struct {
 	Transport   string
 	Listen      string
 	TokenFile   string
+	Review      *ReviewConfig
+}
+
+type ReviewConfig struct {
+	Listen               string   `toml:"listen"`
+	PublicURL            string   `toml:"public_url"`
+	AllowedGroups        []string `toml:"allowed_groups"`
+	OIDCIssuer           string   `toml:"oidc_issuer"`
+	OIDCClientID         string   `toml:"oidc_client_id"`
+	OIDCClientSecretFile string   `toml:"oidc_client_secret_file"`
 }
 
 type fileConfig struct {
@@ -38,6 +48,7 @@ type fileConfig struct {
 		Listen    string `toml:"listen"`
 		TokenFile string `toml:"token_file"`
 	} `toml:"http"`
+	Review *ReviewConfig `toml:"review"`
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -78,6 +89,28 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("config: database_url is required")
+	}
+	if r := fc.Review; r != nil {
+		r.PublicURL = strings.TrimRight(r.PublicURL, "/")
+		var missing []string
+		for _, f := range []struct{ key, value string }{
+			{"listen", r.Listen}, {"public_url", r.PublicURL}, {"oidc_issuer", r.OIDCIssuer},
+			{"oidc_client_id", r.OIDCClientID}, {"oidc_client_secret_file", r.OIDCClientSecretFile},
+		} {
+			if f.value == "" {
+				missing = append(missing, "review."+f.key)
+			}
+		}
+		if len(r.AllowedGroups) == 0 {
+			missing = append(missing, "review.allowed_groups")
+		}
+		if len(missing) > 0 {
+			return Config{}, fmt.Errorf("config: %s required", strings.Join(missing, ", "))
+		}
+		if !strings.HasPrefix(r.PublicURL, "https://") && !strings.HasPrefix(r.PublicURL, "http://") {
+			return Config{}, fmt.Errorf("config: review.public_url must start with https://")
+		}
+		cfg.Review = r
 	}
 	return cfg, nil
 }
