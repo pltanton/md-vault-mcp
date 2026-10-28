@@ -16,7 +16,7 @@ buildGoModule {
     ];
   };
 
-  vendorHash = "sha256-nCKdL7garrIyRZIaBLoXJjJjYZc/IZKr5lxrC1o1LLM=";
+  vendorHash = "sha256-RTj6fVPG6V6drRGMR6ZjtJbGgE9VSonlA/8QR1QBzGw=";
 
   subPackages = ["cmd/md-vault-mcp"];
   ldflags = ["-s" "-w" "-X main.version=0.1.0"];
