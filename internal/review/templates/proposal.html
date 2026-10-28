@@ -1,43 +1,27 @@
 {{template "head" .}}
 <h1>{{.P.Path}}</h1>
-<p class="muted">
-  {{status .P.Status}} · proposed {{when .P.CreatedAt}}{{if .P.DecidedBy}} ·
-  {{.P.DecidedBy}}, {{when .P.DecidedAt}}{{end}}
-</p>
-{{if .Error}}
-<p class="error">Could not do it: {{.Error}}</p>
-{{end}} {{if .P.Comment}}
-<p class="note">Comment: {{.P.Comment}}</p>
-{{end}} {{if eq .P.Status "pending"}}
+<p class="muted">{{status .P.Status}} · proposed {{when .P.CreatedAt}}{{if .P.DecidedBy}} · {{.P.DecidedBy}}, {{when .P.DecidedAt}}{{end}}</p>
+{{if .Error}}<p class="error">Could not do it: {{.Error}}</p>{{end}}
+{{if .P.Comment}}<p class="note">Comment: {{.P.Comment}}</p>{{end}}
+{{if eq .P.Status "pending"}}
 <p class="note">Reason from the agent: {{.P.Reason}}</p>
-{{range .Edits}}
-<div class="diff">
-  {{if .Stale}}
-  <div class="stale">
-    This text is no longer in the note, or occurs more than once; it cannot be applied
-  </div>
-  {{end}} {{range .Before}}
-  <div class="ctx">{{.}}</div>
-  {{end}} {{range .Old}}
-  <div class="del">- {{.}}</div>
-  {{end}} {{range .New}}
-  <div class="add">+ {{.}}</div>
-  {{end}} {{range .After}}
-  <div class="ctx">{{.}}</div>
-  {{end}}
-</div>
-{{if not .Stale}}
-<p class="muted">from line {{.Line}}</p>
-{{end}} {{end}}
 <form class="decide" method="post" action="/p/{{.P.ID}}/apply">
-  <input type="hidden" name="csrf" value="{{.Viewer.CSRF}}" />
-  <label class="muted" for="comment"
-    >Comment for the agent (optional)</label
-  >
-  <textarea id="comment" name="comment"></textarea>
-  <div class="buttons">
-    <button class="primary" type="submit">Apply</button
-    ><button type="submit" formaction="/p/{{.P.ID}}/reject">Reject</button>
-  </div>
+<input type="hidden" name="csrf" value="{{.Viewer.CSRF}}">
+{{range $i, $e := .Edits}}
+<section class="edit">
+<p class="muted">{{if $e.Stale}}<span class="stale">This text is no longer in the note, or occurs more than once; it cannot be applied</span>{{else}}Change {{add $i 1}} of {{len $.Edits}} · from line {{$e.Line}}{{end}}</p>
+<div class="wd">
+{{range $e.Before}}<div class="l ctx">{{.}}</div>{{end}}
+{{if $e.Stale}}{{range $e.Old}}<div class="l chg"><del>{{.}}</del></div>{{end}}{{range $e.New}}<div class="l chg"><ins>{{.}}</ins></div>{{end}}{{end}}
+{{range $e.Blocks}}{{if .Hidden}}<details class="gap"><summary>{{len .Lines}} unchanged lines</summary>{{range .Lines}}<div class="l">{{.HTML}}</div>{{end}}</details>{{else}}{{range .Lines}}<div class="l{{if .Changed}} chg{{end}}">{{.HTML}}</div>{{end}}{{end}}{{end}}
+{{range $e.After}}<div class="l ctx">{{.}}</div>{{end}}
+</div>
+<details class="render"><summary>How the new text will look</summary><div class="md">{{$e.Preview}}</div></details>
+</section>
+{{end}}
+<label class="muted" for="comment">Comment for the agent (optional)</label>
+<textarea id="comment" name="comment"></textarea>
+<div class="actions"><button class="primary" type="submit">Apply</button><button type="submit" formaction="/p/{{.P.ID}}/reject">Reject</button></div>
 </form>
-{{end}} {{template "foot" .}}
+{{end}}
+{{template "foot" .}}

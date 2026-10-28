@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pltanton/md-vault-mcp/internal/index"
-	"github.com/pltanton/md-vault-mcp/internal/notes"
 )
 
 //go:embed templates/*.html
@@ -28,6 +27,7 @@ func parsePages() *template.Template {
 			}
 			return s
 		},
+		"add": func(a, b int) int { return a + b },
 		"when": func(t time.Time) string {
 			if t.IsZero() {
 				return ""
@@ -58,7 +58,7 @@ type proposalPage struct {
 	Title  string
 	Viewer viewer
 	P      index.Proposal
-	Edits  []notes.EditPreview
+	Edits  []editView
 	Error  string
 }
 
@@ -100,9 +100,11 @@ func (s *Server) showProposal(w http.ResponseWriter, r *http.Request, v viewer, 
 		s.message(w, http.StatusNotFound, v, "No such proposal", "The link may be incomplete.")
 		return
 	}
-	var edits []notes.EditPreview
+	var edits []editView
 	if p.Status == "pending" {
-		edits = s.queue.PreviewProposal(p)
+		for _, e := range s.queue.PreviewProposal(p) {
+			edits = append(edits, buildEdit(e))
+		}
 	}
 	s.render(w, status, "proposal.html", proposalPage{Title: p.Path, Viewer: v, P: p, Edits: edits, Error: errText})
 }

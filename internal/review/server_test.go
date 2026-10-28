@@ -176,7 +176,7 @@ func TestReviewAndApply(t *testing.T) {
 		t.Fatalf("list %d\n%s", res.StatusCode, body)
 	}
 	res, body = b.do("GET", "/p/p1", nil)
-	if res.StatusCode != http.StatusOK || !strings.Contains(body, "- ДР: 21 марта") || !strings.Contains(body, "в чате сказали 21-е") {
+	if res.StatusCode != http.StatusOK || !strings.Contains(body, "<del>12</del><ins>21</ins>") || !strings.Contains(body, "<li>ДР: 21 марта</li>") || !strings.Contains(body, "в чате сказали 21-е") {
 		t.Fatalf("proposal %d\n%s", res.StatusCode, body)
 	}
 	m := csrfField.FindStringSubmatch(body)

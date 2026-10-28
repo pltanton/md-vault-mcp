@@ -180,7 +180,22 @@
         align-items: center;
         margin: 0;
       }
-    </style>
+    .edit{display:grid;gap:8px}
+.wd{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 0;font-size:15px;line-height:1.55}
+.wd .l{padding:1px 12px 1px 15px;white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.55em}
+.wd .ctx{color:var(--muted)}
+.wd .chg{border-left:3px solid var(--accent);padding-left:12px}
+del{background:var(--del);text-decoration:line-through;text-decoration-thickness:1px}
+ins{background:var(--add);text-decoration:none}
+details.gap>summary{cursor:pointer;color:var(--muted);font-size:13px;padding:2px 15px;list-style:none}
+details.gap>summary::before{content:"⋯ "}
+details.gap[open]>summary{border-bottom:1px dashed var(--line)}
+details.render>summary{cursor:pointer;color:var(--accent);font-size:.9rem}
+.md{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 14px;margin-top:6px;overflow-wrap:anywhere}
+.md img{max-width:100%}.md pre{overflow-x:auto}.md table{display:block;overflow-x:auto;border-collapse:collapse}.md td,.md th{border:1px solid var(--line);padding:2px 6px}
+.actions{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 0 calc(10px + env(safe-area-inset-bottom,0px));background:var(--ground);border-top:1px solid var(--line)}
+.actions button{flex:1}
+</style>
   </head>
   <body>
     <header>
